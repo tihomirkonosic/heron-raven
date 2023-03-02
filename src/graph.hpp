@@ -40,6 +40,11 @@ void serialize(Archive& archive, NucleicAcid& sequence) {  // NOLINT
 
 namespace raven {
 
+constexpr std::uint8_t use_frequencies = 1;
+constexpr std::uint8_t variant_call_th = 3;
+constexpr double freq_low_th = 0.333;
+constexpr double freq_high_th = 0.667;
+
 class Graph {
  public:
   Graph(
@@ -283,6 +288,7 @@ class Graph {
   bool accurate_;
   double disagreement_;
   std::vector<std::unordered_set<std::uint32_t>> annotations_;
+  std::vector<std::vector<std::uint32_t>> anno_;
   std::vector<std::unique_ptr<Pile>> piles_;
   std::vector<std::shared_ptr<Node>> nodes_;
   std::vector<std::shared_ptr<Edge>> edges_;
