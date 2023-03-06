@@ -44,6 +44,7 @@ constexpr std::uint8_t use_frequencies = 1;
 constexpr std::uint8_t variant_call_th = 3;
 constexpr double freq_low_th = 0.333;
 constexpr double freq_high_th = 0.667;
+constexpr std::uint8_t print_snp_data = 1;
 
 class Graph {
  public:
@@ -68,7 +69,6 @@ class Graph {
   // spanning bridged repeats at sequence ends
   void Construct(
       std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,  // NOLINT
-      const std::string& annotations_path = "",
       double disagreement = 0.1,
       unsigned split = 0);
 
