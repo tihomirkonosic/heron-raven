@@ -36,10 +36,11 @@ namespace {
     {"version", no_argument, nullptr, 'v'},
     {"help", no_argument, nullptr, 'h'},
     {"output", required_argument, nullptr, 'o'},
+    {"kMaxNumOverlaps", required_argument, nullptr, 'x'},
     {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "wp:m:n:g:s:D:f:rdt:vho:";
+  std::string optstr = "wp:m:n:g:s:D:f:rdt:vho:x:";
 
   void Help() {
     std::cout <<
@@ -95,6 +96,9 @@ namespace {
               "    -o, --output <string>\n"
               "      output file name, if it is not set output is written to stdout\n"
               "      for diploid assembly, outputs will be written in 2 files with suffixes -1, -2"
+              "    -x, --kMaxNumOverlaps <long unsigned int>\n"
+              "      default: 32\n"
+              "      maximum number of overlaps that will be taken during find overlaps and create piles stage\n"
               "    -h, --help\n"
               "      prints the usage\n";
   }
@@ -157,6 +161,8 @@ int main(int argc, char** argv) {
   std::uint32_t cuda_alignment_batches = 0;
   bool cuda_banded_alignment = false;
 
+  std::size_t kMaxNumOverlaps = 16;
+
 #ifdef CUDA_ENABLED
   optstr += "c:ba:";
 #endif
@@ -198,6 +204,7 @@ int main(int argc, char** argv) {
       case 'o': output_path = optarg;
         stdoutput = false;
         break;
+      case 'x': kMaxNumOverlaps = std::atof(optarg); break;
       default: return 1;
     }
   }
@@ -260,7 +267,7 @@ int main(int argc, char** argv) {
     timer.Start();
   }
 
-  graph.Construct(sequences, disagreement, split);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps);
   graph.Assemble();
   graph.Polish(sequences, m, n, g, cuda_poa_batches, cuda_banded_alignment,
       cuda_alignment_batches, num_polishing_rounds);
