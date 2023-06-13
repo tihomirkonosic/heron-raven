@@ -204,7 +204,6 @@ class Graph {
     Node(Node* begin, Node* end);
     Node(Node* begin, Node* end, std::uint32_t id);
     Node(Node* begin, Node* end, bool is_unitig);
-    Node(Node* begin, Node* end, bool is_unitig, std::uint32_t id);
 
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
