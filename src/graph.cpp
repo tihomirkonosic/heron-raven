@@ -3604,6 +3604,32 @@ std::vector<std::unique_ptr<biosoup::NucleicAcid>> Graph::GetUnitigs(
     return dst;
   }
 
+  std::vector<std::unique_ptr<biosoup::NucleicAcid>> Graph::GetAssembledData(bool primary) {
+
+    biosoup::NucleicAcid::num_objects = 0;
+    auto node_list = nodes_;
+    if (!primary)
+      node_list = nodes_alternate_;
+
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>> dst;
+    for (const auto& it : node_list) {
+      if (it == nullptr || it->is_rc() || !it->is_unitig) {
+        continue;
+      }
+
+      std::string name = it->sequence.name +
+                         " LN:i:" + std::to_string(it->sequence.inflated_len) +
+                         " RC:i:" + std::to_string(it->count) +
+                         " XO:i:" + std::to_string(it->is_circular);
+
+      dst.emplace_back(new biosoup::NucleicAcid(
+        name,
+        it->sequence.InflateData()));
+    }
+
+    return dst;
+  }
+
 void Graph::RemoveEdges(
     const std::unordered_set<std::uint32_t>& indices,
     bool remove_nodes) {

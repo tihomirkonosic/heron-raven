@@ -327,12 +327,22 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    for (const auto &it: graph.GetUnitigs(num_polishing_rounds > 0)) {
+//    for (const auto &it: graph.GetUnitigs(num_polishing_rounds > 0)) {
+//      outfile1 << ">" << it->name << std::endl;
+//      outfile1 << it->InflateData() << std::endl;
+//    }
+//
+//    for (const auto &it: graph.GetUnitigPairs(num_polishing_rounds > 0)) {
+//      outfile2 << ">" << it->name << std::endl;
+//      outfile2 << it->InflateData() << std::endl;
+//    }
+
+    for (const auto &it: graph.GetAssembledData(true)) {
       outfile1 << ">" << it->name << std::endl;
       outfile1 << it->InflateData() << std::endl;
     }
 
-    for (const auto &it: graph.GetUnitigPairs(num_polishing_rounds > 0)) {
+    for (const auto &it: graph.GetAssembledData(false)) {
       outfile2 << ">" << it->name << std::endl;
       outfile2 << it->InflateData() << std::endl;
     }

@@ -103,6 +103,8 @@ class Graph {
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigPairs(
       bool drop_unpolished = false);
 
+  std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetAssembledData(bool primary = true);
+
   // draw with misc/plotter.py
   void PrintJson(const std::string& path) const;
 
