@@ -56,8 +56,7 @@ Graph::Node::Node(Node* begin, Node* end)
       transitive(),
       inedges(),
       outedges(),
-      pair(),
-      alternate() {
+      pair() {
   std::string data{};
 
   auto it = begin;
@@ -115,7 +114,7 @@ Graph::Node::Node(Node* begin, Node* end)
       data);
   }
 
-  Graph::Node::Node(Node *begin, Node *end, bool is_unitig)
+Graph::Node::Node(Node* begin, Node* end, bool is_unitig)
     : id(num_objects++),
       sequence(),
       count(),
@@ -133,13 +132,13 @@ Graph::Node::Node(Node* begin, Node* end)
 
     std::string data{};
 
-    auto it = begin;
-    if (begin == end) {
-
-      data += it->sequence.InflateData();
-      count += it->count;
-      unitig_nodes.emplace_back(it);
-    } else {
+  auto it = begin;
+  if(begin == end){
+        data += it->sequence.InflateData();
+        count += it->count;
+        unitig_nodes.emplace_back(it);
+    }
+    else{
       while (true) {
         data += it->outedges.front()->Label();
         count += it->count;
@@ -147,48 +146,127 @@ Graph::Node::Node(Node* begin, Node* end)
         if ((it = it->outedges.front()->head) == end) {
           unitig_nodes.emplace_back(it);
           break;
+          }
         }
-      }
-
-      if (begin != end) {
-        data += end->sequence.InflateData();
-        count += end->count;
-      }
+      
+        if (begin != end) {
+          data += end->sequence.InflateData();
+          count += end->count;
+        }
     }
+
 
     std::uint32_t front_inedge_count{0};
     std::uint32_t back_inedge_count{0};
     std::uint32_t front_outedge_count{0};
     std::uint32_t back_outedge_count{0};
 
-    for (auto &inedge: begin->inedges) {
-      if (std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()) {
+    for(auto& inedge : begin->inedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()){
         front_inedges.emplace_back(inedge);
         front_inedge_count++;
       }
     };
 
-    for (auto &outedge: begin->outedges) {
-      if (std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()) {
+    for(auto& outedge : begin->outedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()){
         front_outedges.emplace_back(outedge);
         front_outedge_count++;
       }
     };
-
-    for (auto &inedge: end->inedges) {
-      if (std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()) {
+    
+    for(auto& inedge : end->inedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()){      
         back_inedges.emplace_back(inedge);
         back_inedge_count++;
       };
     };
 
-    for (auto &outedge: end->outedges) {
-      if (std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()) {
+
+    for(auto& outedge : end->outedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()){      
         back_outedges.emplace_back(outedge);
         back_outedge_count++;
       };
     };
+    sequence = biosoup::NucleicAcid(
+      "Utg" + std::to_string(id & (~1UL)),
+      data);
+  }
 
+  Graph::Node::Node(Node* begin, Node* end, bool is_unitig, std::uint32_t id)
+    : id(id),
+      sequence(),
+      count(),
+      is_unitig(is_unitig),
+      is_circular(begin == end),
+      is_polished(),
+      transitive(),
+      inedges(),
+      outedges(),
+      pair(),
+      unitig_nodes() {
+
+    std::string data{};
+
+
+    auto it = begin;
+    if(begin == end){
+      data += it->sequence.InflateData();
+      count += it->count;
+      unitig_nodes.emplace_back(it);
+  }
+  else{
+    while (true) {
+      data += it->outedges.front()->Label();
+      count += it->count;
+      unitig_nodes.emplace_back(it);
+      if ((it = it->outedges.front()->head) == end) {
+        unitig_nodes.emplace_back(it);
+        break;
+        }
+      }
+    
+      if (begin != end) {
+        data += end->sequence.InflateData();
+        count += end->count;
+      }
+  }
+
+
+    std::uint32_t front_inedge_count{0};
+    std::uint32_t back_inedge_count{0};
+    std::uint32_t front_outedge_count{0};
+    std::uint32_t back_outedge_count{0};
+
+    for(auto& inedge : begin->inedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()){
+        front_inedges.emplace_back(inedge);
+        front_inedge_count++;
+      }
+    };
+
+    for(auto& outedge : begin->outedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()){
+        front_outedges.emplace_back(outedge);
+        front_outedge_count++;
+      }
+    };
+    
+    for(auto& inedge : end->inedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()){      
+        back_inedges.emplace_back(inedge);
+        back_inedge_count++;
+      };
+    };
+
+
+    for(auto& outedge : end->outedges){
+      if(std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()){      
+        back_outedges.emplace_back(outedge);
+        back_outedge_count++;
+      };
+    };
     sequence = biosoup::NucleicAcid(
       "Utg" + std::to_string(id & (~1UL)),
       data);
@@ -303,10 +381,10 @@ void Graph::Construct(
   };
 
   auto cigar_to_edlib_alignment = [](const std::string& s) -> std::string{
-    std::string rs;
-    std::size_t pos = 0;
-    std::size_t start_pos = 0;
-    std::size_t total_num = 0;
+    std::string rs = "";
+    std::uint64_t pos = 0;
+    std::uint64_t start_pos = 0;
+    std::uint64_t total_num = 0;
 
     if (s.empty()) {
         return rs;
@@ -346,7 +424,7 @@ void Graph::Construct(
               };
               break;
             default:
-                rs += '\000';
+                //rs += '\000';
                 break;
             }
         }
@@ -544,13 +622,6 @@ void Graph::Construct(
     std::uint32_t d;
   };
 
-  // std::vector<std::vector<base_pile>> snp_base_pile(sequences.size());
-  // for (const auto& it : sequences) {
-  //   snp_base_pile[it->id].resize(it->inflated_len);
-  // }
-
- // std::vector<std::vector<base_pile>> snp_base_pile(sequences.size());
-
 //region annotations_ helper functions
 
   auto edlib_wrapper = [&] (
@@ -558,58 +629,47 @@ void Graph::Construct(
       const biosoup::Overlap& it,
       const std::string& lhs,
       const std::string& rhs) -> std::string {
-    
+    std::string cigar_alignment = "";
     EdlibAlignResult result = edlibAlign(
         lhs.c_str(), lhs.size(),
         rhs.c_str(), rhs.size(),
         edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0)); // align lhs and rhs
     if(result.status == EDLIB_STATUS_OK){
-      std::string cigar_alignment = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_EXTENDED);
-      // edlibFreeAlignResult(result);
-      // return cigar_alignment;
-      // std::string edlib_alignment(result.alignmentLength, '\0');
-      // for (int i = 0; i < result.alignmentLength; i++) {
-      //     edlib_alignment[i] = static_cast<char>(result.alignment[i]);
-      // }
+      cigar_alignment = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_EXTENDED);
+      edlibFreeAlignResult(result);
       return cigar_alignment;
     }
     else{
       edlibFreeAlignResult(result);
       std::string cigar_alignment = "";
-      //std::string edlib_alignment = "";
       return cigar_alignment;
     }
   };
 
-  auto call_snps = [&](std::uint32_t i, std::vector<biosoup::Overlap> ovlps)-> void{
-    
+  auto call_snps = [&](std::uint32_t i, std::vector<biosoup::Overlap> ovlps_final)-> void{
     std::uint32_t seq_inflated_len = sequences[i]->inflated_len;
-    std::vector<base_pile> tmp(seq_inflated_len);
-    std::vector<std::uint32_t> cov(seq_inflated_len);
+    std::vector<base_pile> base_pile_tmp(seq_inflated_len);
+    std::vector<std::uint32_t> cov;
 
-    for(auto& ovlp : ovlps){
+    for(auto& ovlp : ovlps_final){
       if (!(ovlp.alignment.empty())) {
             std::uint32_t lhs_pos = ovlp.lhs_begin;
             std::uint32_t rhs_pos = 0;
             biosoup::NucleicAcid rhs{"", sequences[ovlp.rhs_id]->InflateData(ovlp.rhs_begin, ovlp.rhs_end - ovlp.rhs_begin)};
             if(!ovlp.strand) rhs.ReverseAndComplement();
-            auto rhs_tmp = rhs.InflateData();
-            int rhs_length = rhs_tmp.length();
+            std::string rhs_tmp = rhs.InflateData();
 
             std::string edlib_alignment = cigar_to_edlib_alignment(ovlp.alignment);
   
-            int overlap_legnth = edlib_alignment.length();
-
-
-            for (int j = 0; j < overlap_legnth; ++j) {
-              switch (edlib_alignment[j]) {
+            for (auto& edlib_align : edlib_alignment) {
+                 switch (edlib_align) {
                 case 0:
                 case 3: {
                   switch (rhs_tmp[rhs_pos]) {
-                    case 'A': ++tmp[lhs_pos].a; break;
-                    case 'C': ++tmp[lhs_pos].c; break;
-                    case 'G': ++tmp[lhs_pos].g; break;
-                    case 'T': ++tmp[lhs_pos].t; break;
+                      case 'A': ++base_pile_tmp[lhs_pos].a; break;
+                      case 'C': ++base_pile_tmp[lhs_pos].c; break;
+                      case 'G': ++base_pile_tmp[lhs_pos].g; break;
+                      case 'T': ++base_pile_tmp[lhs_pos].t; break;
                     default: break; // if they align
                   }
                   ++lhs_pos;
@@ -617,12 +677,14 @@ void Graph::Construct(
                   break;
                 }
                 case 1: {
-                  ++tmp[lhs_pos].i;
+                    ++base_pile_tmp[lhs_pos].i;
                   ++lhs_pos;
                   break; // insertion on the left hand side
                 }
                 case 2: {
-                  ++tmp[lhs_pos].d;
+                    if(!(lhs_pos >= base_pile_tmp.size())){
+                       ++base_pile_tmp[lhs_pos].d;
+                    }      
                   ++rhs_pos;
                   break; // deletion on the left hand side
                 }
@@ -633,16 +695,16 @@ void Graph::Construct(
     }
 
 
-    for (const auto& jt : tmp) {
-      cov.emplace_back(jt.a + jt.c + jt.g + jt.t);
-      //cov.emplace_back(jt.a + jt.c + jt.g + jt.t + jt.d + jt.i);
+    for (const auto& jt : base_pile_tmp) {
+      //cov.emplace_back(jt.a + jt.c + jt.g + jt.t);
+      cov.emplace_back(jt.a + jt.c + jt.g + jt.t + jt.d + jt.i);
     }
 
     std::nth_element(cov.begin(), cov.begin() + cov.size() / 2, cov.end());
     double m = cov[cov.size() / 2] * 2. / 3.;
 
     std::size_t j = 0;
-    for (const auto& jt : tmp){
+    for (const auto& jt : base_pile_tmp){
       std::vector<double> counts = {
           static_cast<double>(jt.a),
           static_cast<double>(jt.c),
@@ -799,7 +861,6 @@ void Graph::Construct(
           for (const auto& jt : it.get()) {
             overlaps[jt.lhs_id].emplace_back(jt);
             overlaps[jt.rhs_id].emplace_back(cigar_overlap_reverse(jt));
-            //overlaps[jt.rhs_id].emplace_back(overlap_reverse(jt));
           }
         }
         thread_futures.clear();
