@@ -55,7 +55,7 @@ namespace {
               "    -w, --weaken\n"
               "      use larger (k, w) when assembling highly accurate sequences\n"
               "    -p, --polishing-rounds <int>\n"
-              "      default: 2\n"
+              "      default: 0\n"
               "      number of times racon is invoked\n"
               "    -m, --match <int>\n"
               "      default: 3\n"
@@ -144,7 +144,7 @@ int main(int argc, char** argv) {
   bool weaken = false;
   unsigned split = 0;
 
-  std::int32_t num_polishing_rounds = 2;
+  std::int32_t num_polishing_rounds = 0;
   std::int8_t m = 3;
   std::int8_t n = -5;
   std::int8_t g = -4;
@@ -294,13 +294,16 @@ int main(int argc, char** argv) {
   };
 
   graph.Construct(sequences, disagreement, split, kMaxNumOverlaps);
+
   if(ul_read_path.empty()){
-  graph.Assemble();
+    graph.Assemble();
+    graph.AssembleDiploids();
   } else {
     graph.UlAssemble(ul_sequences);
   }
-  graph.Polish(sequences, m, n, g, cuda_poa_batches, cuda_banded_alignment,
-      cuda_alignment_batches, num_polishing_rounds);
+
+  graph.Polish(sequences, m, n, g, cuda_poa_batches, cuda_banded_alignment, cuda_alignment_batches, num_polishing_rounds);
+
   graph.PrintGfa(gfa_path);
 
   if (stdoutput) {
@@ -332,16 +335,6 @@ int main(int argc, char** argv) {
       outfile1.close();
       return 1;
     }
-
-//    for (const auto &it: graph.GetUnitigs(num_polishing_rounds > 0)) {
-//      outfile1 << ">" << it->name << std::endl;
-//      outfile1 << it->InflateData() << std::endl;
-//    }
-//
-//    for (const auto &it: graph.GetUnitigPairs(num_polishing_rounds > 0)) {
-//      outfile2 << ">" << it->name << std::endl;
-//      outfile2 << it->InflateData() << std::endl;
-//    }
 
     for (const auto &it: graph.GetAssembledData(true)) {
       outfile1 << ">" << it->name << std::endl;

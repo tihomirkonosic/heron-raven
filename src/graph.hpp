@@ -77,6 +77,9 @@ class Graph {
   // simplify with transitive reduction, tip prunning and bubble popping
   void Assemble();
 
+  void DuplicateGraph();
+  void AssembleDiploids();
+
   void UlAssemble(
       std::vector<std::unique_ptr<biosoup::NucleicAcid>>& ul_sequences);
 
@@ -131,6 +134,7 @@ class Graph {
   std::uint32_t RemoveTips();
 
   std::uint32_t RemoveBubbles();
+  std::uint32_t RemoveSnpBubbles();
 
   // remove long edges in force directed layout
   std::uint32_t RemoveLongEdges(std::uint32_t num_round);
@@ -207,6 +211,7 @@ class Graph {
     Node(Node* begin, Node* end);
     Node(Node* begin, Node* end, std::uint32_t id);
     Node(Node* begin, Node* end, bool is_unitig);
+    Node(Node* begin, Node* end, bool is_unitig, std::uint32_t id);
 
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;

@@ -56,7 +56,8 @@ Graph::Node::Node(Node* begin, Node* end)
       transitive(),
       inedges(),
       outedges(),
-      pair() {
+      pair(),
+      alternate() {
   std::string data{};
 
   auto it = begin;
@@ -205,7 +206,8 @@ Graph::Node::Node(Node* begin, Node* end, bool is_unitig)
       inedges(),
       outedges(),
       pair(),
-      unitig_nodes() {
+      unitig_nodes(),
+      alternate() {
 
     std::string data{};
 
@@ -1513,6 +1515,8 @@ void Graph::Construct(
     std::cerr << "[raven::Graph::Construct] stored " << edges_.size() << " edges "  // NOLINT
               << std::fixed << timer.Stop() << "s"
               << std::endl;
+
+    PrintGfa("after_construction.gfa");
   }
 
   // checkpoint
@@ -1538,7 +1542,6 @@ void Graph::Assemble() {
   }
 
   biosoup::Timer timer{};
-  PrintGfa("after_construction.gfa");
 
   // remove transitive edges
   if (stage_ == -3) {
@@ -1570,7 +1573,7 @@ void Graph::Assemble() {
     ++stage_;
     if (checkpoints_) {
       timer.Start();
-      //Store();
+      Store();
       std::cerr << "[raven::Graph::Assemble] reached checkpoint "
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
@@ -1579,52 +1582,11 @@ void Graph::Assemble() {
 
   // remove tips and bubbles
   if (stage_ == -2) {
-    //duplicate graph before bubble popping
-    std::cerr << "[raven::Graph::Assemble] start duplicating graph; nodes: " << nodes_.size() << std::endl;
-    for (const auto& it : nodes_) {
-      if (it == nullptr)
-        continue;
+        timer.Start();
 
-      auto node = std::make_shared<Node>(it->sequence, Node::num_objects_alternate++);
-      nodes_alternate_.emplace_back(node);
-      if (it->pair != nullptr)
-        node->pair = it->pair->alternate;
-      if (node->pair != nullptr)
-        node->pair->pair = node.get();
-      node->color = it->color;
-      it->alternate = node.get();
-      node->alternate = it.get();
-      node->is_primary = false;
-    }
-
-    std::cerr << "[raven::Graph::Assemble] duplicated nodes created" << std::endl;
-
-    for (const auto& it : edges_) {
-      if (it == nullptr)
-        continue;
-
-      auto edge = std::make_shared<Edge>(it->tail->alternate, it->head->alternate, it->length, Edge::num_objects_alternate++);
-      it->alternate = edge.get();
-      edge->alternate = it.get();
-
-      edge->pair = it->pair->alternate;
-      if (edge->pair != nullptr)
-        edge->pair->pair = edge.get();
-
-      edges_alternate_.emplace_back(edge);
-    }
-
-    std::cerr << "[raven::Graph::Assemble] graph duplicated" << std::endl;
-
-    timer.Start();
-
-    int pass_count = 0;
     while (true) {
-      std::cerr << "[raven::Graph::Assemble] removing tips and bubbles; pass: " << ++pass_count << "; tips first:" << std::endl;
       std::uint32_t num_changes = RemoveTips();
-      std::cerr << "[raven::Graph::Assemble] num_changes for tips: " << num_changes << "; removing bubbles: " << std::endl;
       num_changes += RemoveBubbles();
-      std::cerr << "[raven::Graph::Assemble] num_changes for bubbles " << num_changes << std::endl;
       if (num_changes == 0) {
         break;
       }
@@ -1642,7 +1604,7 @@ void Graph::Assemble() {
     ++stage_;
     if (checkpoints_) {
       timer.Start();
-      //Store();
+      Store();
       std::cerr << "[raven::Graph::Assemble] reached checkpoint "
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
@@ -1653,49 +1615,16 @@ void Graph::Assemble() {
   if (stage_ == -1) {
     timer.Start();
 
-    if (annotations_.empty()) {
-      CreateUnitigs(42);  // speed up force directed layout
-    }
+//    if (annotations_.empty()) {
+//      CreateUnitigs(42);  // speed up force directed layout
+//    }
     //RemoveLongEdges(16);
 
     std::cerr << "[raven::Graph::Assemble] removed long edges "
               << std::fixed << timer.Stop() << "s"
               << std::endl;
 
-    PrintGfa("after_force.gfa");
-
-    timer.Start();
-
-    int pass_count = 0;
-    while (true) {
-      std::cerr << "[raven::Graph::Assemble] removing tips and bubbles; pass: " << ++pass_count << "; tips first:" << std::endl;
-      std::uint32_t num_changes = RemoveTips();
-      std::cerr << "[raven::Graph::Assemble] num_changes for tips: " << num_changes << "; removing bubbles: " << std::endl;
-      if (annotations_.empty()) {
-        num_changes += RemoveBubbles();
-      }
-      std::cerr << "[raven::Graph::Assemble] num_changes for bubbles " << num_changes << std::endl;
-      if (num_changes == 0) {
-        break;
-      }
-    }
-
-    if (annotations_.empty()) {
-
-      std::cerr << "[raven::Graph::Assemble] SalvagePlasmids "
-                << std::endl;
-
-      SalvagePlasmids();
-    } else {
-
-      std::cerr << "[raven::Graph::Assemble] SalvageHaplotypes "
-                << std::endl;
-
-      SalvageHaplotypesPrimary();
-      SalvageHaplotypesAlternative();
-    }
-
-    timer.Stop();
+    //PrintGfa("after_force.gfa");
   }
 
   // checkpoint
@@ -1711,6 +1640,82 @@ void Graph::Assemble() {
   }
 
   std::cerr << "[raven::Graph::Assemble] "
+            << std::fixed << timer.elapsed_time() << "s"
+            << std::endl;
+}
+
+void Graph::DuplicateGraph() {
+  for (const auto& it : nodes_) {
+    if (it == nullptr)
+      continue;
+
+    auto node = std::make_shared<Node>(it->sequence, Node::num_objects_alternate++);
+    nodes_alternate_.emplace_back(node);
+    if (it->pair != nullptr)
+      node->pair = it->pair->alternate;
+    if (node->pair != nullptr)
+      node->pair->pair = node.get();
+    node->color = it->color;
+    it->alternate = node.get();
+    node->alternate = it.get();
+    node->is_primary = false;
+  }
+
+  for (const auto& it : edges_) {
+    if (it == nullptr)
+      continue;
+
+    auto edge = std::make_shared<Edge>(it->tail->alternate, it->head->alternate, it->length, Edge::num_objects_alternate++);
+    it->alternate = edge.get();
+    edge->alternate = it.get();
+
+    edge->pair = it->pair->alternate;
+    if (edge->pair != nullptr)
+      edge->pair->pair = edge.get();
+
+    edges_alternate_.emplace_back(edge);
+  }
+}
+
+void Graph::AssembleDiploids() {
+  if (stage_ != 0) {
+    return;
+  }
+  biosoup::Timer timer{};
+
+  timer.Start();
+
+  DuplicateGraph();
+
+  std::cerr << "[raven::Graph::AssembleDiploids] Duplicated graph "
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  timer.Start();
+
+  while (true) {
+    std::uint32_t num_changes = RemoveSnpBubbles();
+
+    if (num_changes == 0) {
+      break;
+    }
+  }
+
+  std::cerr << "[raven::Graph::AssembleDiploids] removed SNP bubbles "
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  timer.Start();
+
+  //SalvageHaplotypesPrimary();
+  //SalvageHaplotypesAlternative();
+  SalvageHaplotypes();
+
+  std::cerr << "[raven::Graph::AssembleDiploids] Created haplotypes "
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  std::cerr << "[raven::Graph::AssembleDiploids] "
             << std::fixed << timer.elapsed_time() << "s"
             << std::endl;
 }
@@ -1948,7 +1953,292 @@ std::uint32_t Graph::RemoveBubbles() {
   };
   auto bubble_pop = [&] (
       const std::vector<Node*>& lhs,
-      const std::vector<Node*>& rhs) -> std::vector<MarkedEdge> {
+      const std::vector<Node*>& rhs) -> std::unordered_set<std::uint32_t> {
+    if (lhs.empty() || rhs.empty()) {
+      return std::unordered_set<std::uint32_t>{};
+    }
+
+    // check BFS result
+    std::unordered_set<Node*> bubble;
+    bubble.insert(lhs.begin(), lhs.end());
+    bubble.insert(rhs.begin(), rhs.end());
+    if (lhs.size() + rhs.size() - 2 != bubble.size()) {
+      return std::unordered_set<std::uint32_t>{};
+    }
+    for (const auto& it : lhs) {
+      if (bubble.count(it->pair) != 0) {
+        return std::unordered_set<std::uint32_t>{};
+      }
+    }
+
+    if (!path_is_simple(lhs) || !path_is_simple(rhs)) {  // complex path(s)
+      // check poppability
+      if (FindRemovableEdges(lhs).empty() && FindRemovableEdges(rhs).empty()) {
+        return std::unordered_set<std::uint32_t>{};
+      }
+
+      // check similarity
+      auto l = path_sequence(lhs);
+      auto r = path_sequence(rhs);
+      if (std::min(l.size(), r.size()) < std::max(l.size(), r.size()) * 0.8) {
+        return std::unordered_set<std::uint32_t>{};
+      }
+
+      EdlibAlignResult result = edlibAlign(
+          l.c_str(), l.size(),
+          r.c_str(), r.size(),
+          edlibDefaultAlignConfig());
+      double score = 0;
+      if (result.status == EDLIB_STATUS_OK) {
+        score = 1 - result.editDistance /
+                    static_cast<double>(std::max(l.size(), r.size()));
+        edlibFreeAlignResult(result);
+      }
+      if (score < 0.8) {
+        return std::unordered_set<std::uint32_t>{};
+      }
+      if (!annotations_.empty()) {
+        std::unordered_set<std::uint32_t> marked_edges;
+        if (!path_is_simple(lhs)) {
+          marked_edges = FindRemovableEdges(lhs);
+          if (marked_edges.size() > 2) {
+            marked_edges.clear();
+          }
+        }
+        if (marked_edges.empty() && !path_is_simple(rhs)) {
+          marked_edges = FindRemovableEdges(rhs);
+          if (marked_edges.size() > 2) {
+            marked_edges.clear();
+          }
+        }
+        return marked_edges;
+      }
+    }
+
+    if (!annotations_.empty()) {
+      auto la = path_annotation(lhs);
+      auto ra = path_annotation(rhs);
+
+      if (!la.empty() && !ra.empty()) {
+        auto l = path_sequence(lhs);
+        auto r = path_sequence(rhs);
+
+        EdlibAlignResult result = edlibAlign(
+            l.c_str(), l.size(),
+            r.c_str(), r.size(),
+            edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0));
+
+        if (result.status == EDLIB_STATUS_OK) {
+          std::uint32_t lhs_pos = 0;
+          std::uint32_t rhs_pos = 0;
+
+          std::uint32_t mismatches = 0;
+          std::uint32_t snps = 0;
+
+          for (int a = 0; a < result.alignmentLength; ++a) {
+            if (la.find(lhs_pos) != la.end() ||
+                ra.find(rhs_pos) != ra.end()) {
+              ++snps;
+              if (result.alignment[a] == 3) {
+                ++mismatches;
+              }
+            }
+            switch (result.alignment[a]) {
+              case 0:
+              case 3: {
+                ++lhs_pos;
+                ++rhs_pos;
+                break;
+              }
+              case 1: {
+                ++lhs_pos;
+                break;
+              }
+              case 2: {
+                ++rhs_pos;
+                break;
+              }
+              default: break;
+            }
+          }
+
+          edlibFreeAlignResult(result);
+
+          if (mismatches / static_cast<double>(snps) > 0.1) {  // disagreement_) {
+            return std::unordered_set<std::uint32_t>{};
+          }
+        }
+      }
+    }
+
+    std::uint32_t lhs_count = 0;
+    for (auto jt : lhs) {
+      lhs_count += jt->count;
+    }
+    std::uint32_t rhs_count = 0;
+    for (auto jt : rhs) {
+      rhs_count += jt->count;
+    }
+    auto marked_edges = FindRemovableEdges(lhs_count > rhs_count ? rhs : lhs);
+    if (marked_edges.empty()) {
+      marked_edges = FindRemovableEdges(lhs_count > rhs_count ? lhs : rhs);
+    }
+    return marked_edges;
+  };
+  //endregion path helper functions
+
+  std::uint32_t num_bubbles = 0;
+  for (const auto& it : nodes_) {
+    if (it == nullptr || it->outdegree() < 2) {
+      continue;
+    }
+
+    // BFS
+    Node* begin = it.get();
+    Node* end = nullptr;
+    Node* other_end = nullptr;
+    std::deque<Node*> que{begin};
+    std::vector<Node*> visited{1, begin};
+    while (!que.empty() && !end) {
+      auto jt = que.front();
+      que.pop_front();
+
+      for (auto kt : jt->outedges) {
+        if (kt->head == begin) {  // cycle
+          continue;
+        }
+        if (distance[jt->id] + kt->length > 5000000) {  // out of reach
+          continue;
+        }
+        if (kt->head->id > distance.size())
+          continue;
+        distance[kt->head->id] = distance[jt->id] + kt->length;
+        visited.emplace_back(kt->head);
+        que.emplace_back(kt->head);
+
+        if (predecessor[kt->head->id]) {  // found bubble
+          end = kt->head;
+          other_end = jt;
+          break;
+        }
+
+        predecessor[kt->head->id] = jt;
+      }
+    }
+
+    std::unordered_set<std::uint32_t> marked_edges;
+    if (end) {
+      auto lhs = path_extract(begin, end);
+      auto rhs = path_extract(begin, other_end);
+      rhs.emplace_back(end);
+      marked_edges = bubble_pop(lhs, rhs);
+    }
+
+    for (auto jt : visited) {
+      distance[jt->id] = 0;
+      predecessor[jt->id] = nullptr;
+    }
+
+    RemoveEdges(marked_edges, true);
+    num_bubbles += 1 - marked_edges.empty();
+  }
+
+  return num_bubbles;
+}
+
+std::uint32_t Graph::RemoveSnpBubbles() {
+  std::vector<std::uint32_t> distance(nodes_.size(), 0);
+  std::vector<Node*> predecessor(nodes_.size(), nullptr);
+
+  //region annotations_ helper functions
+  auto annotation_extract = [&] (
+    std::uint32_t i,
+    std::uint32_t begin,
+    std::uint32_t end,
+    std::uint32_t len,
+    bool strand) -> std::unordered_set<std::uint32_t> {
+    std::unordered_set<std::uint32_t> dst;
+    if (annotations_[i].empty()) {
+      return dst;
+    }
+    for (const auto& it : annotations_[i]) {
+      if (begin <= it && it <= end) {
+        dst.emplace(strand ? it : len - 1 - it);
+      }
+    }
+    return dst;
+  };
+  //endregion annotations_ helper functions
+
+  //region path helper functions
+  auto path_extract = [&] (Node* begin, Node* end) -> std::vector<Node*> {
+    std::vector<Node*> dst;
+    while (end != begin) {
+      dst.emplace_back(end);
+      end = predecessor[end->id];
+    }
+    dst.emplace_back(begin);
+    std::reverse(dst.begin(), dst.end());
+    return dst;
+  };
+  auto path_is_simple = [] (const std::vector<Node*>& path) -> bool {
+    if (path.empty()) {
+      return false;
+    }
+    for (std::uint32_t i = 1; i < path.size() - 1; ++i) {
+      if (path[i]->is_junction()) {
+        return false;  // complex
+      }
+    }
+    return true;  // without branches
+  };
+  auto path_sequence = [] (const std::vector<Node*>& path) -> std::string {
+    std::string data{};
+    for (std::uint32_t i = 0; i < path.size() - 1; ++i) {
+      for (auto it : path[i]->outedges) {
+        if (it->head == path[i + 1]) {
+          data += it->Label();
+          break;
+        }
+      }
+    }
+    data += path.back()->sequence.InflateData();
+    return data;
+  };
+  auto path_annotation = [&] (const std::vector<Node*>& path)
+    -> std::unordered_set<std::uint32_t> {
+    std::unordered_set<std::uint32_t> dst;
+    std::uint32_t offset = 0;
+    for (std::uint32_t i = 0; i < path.size() - 1; ++i) {
+      for (auto it : path[i]->outedges) {
+        if (it->head == path[i + 1]) {
+          const auto& annotations = annotation_extract(
+            it->tail->sequence.id,
+            0,
+            it->length,
+            it->tail->sequence.inflated_len,
+            !it->tail->is_rc());
+          for (const auto& jt : annotations) {
+            dst.emplace(offset + jt);
+          }
+          offset += it->length;
+        }
+      }
+    }
+    const auto& annotations = annotation_extract(
+      path.back()->sequence.id,
+      0,
+      path.back()->sequence.inflated_len,
+      path.back()->sequence.inflated_len,
+      !path.back()->is_rc());
+    for (const auto& jt : annotations) {
+      dst.emplace(offset + jt);
+    }
+    return dst;
+  };
+  auto bubble_pop = [&] (
+    const std::vector<Node*>& lhs,
+    const std::vector<Node*>& rhs) -> std::vector<MarkedEdge> {
     if (lhs.empty() || rhs.empty()) {
       return std::vector<MarkedEdge>{};
     }
@@ -1980,13 +2270,13 @@ std::uint32_t Graph::RemoveBubbles() {
       }
 
       EdlibAlignResult result = edlibAlign(
-          l.c_str(), l.size(),
-          r.c_str(), r.size(),
-          edlibDefaultAlignConfig());
+        l.c_str(), l.size(),
+        r.c_str(), r.size(),
+        edlibDefaultAlignConfig());
       double score = 0;
       if (result.status == EDLIB_STATUS_OK) {
         score = 1 - result.editDistance /
-            static_cast<double>(std::max(l.size(), r.size()));
+                    static_cast<double>(std::max(l.size(), r.size()));
         edlibFreeAlignResult(result);
       }
       if (score < 0.8) {
@@ -2022,9 +2312,9 @@ std::uint32_t Graph::RemoveBubbles() {
         auto r = path_sequence(rhs);
 
         EdlibAlignResult result = edlibAlign(
-            l.c_str(), l.size(),
-            r.c_str(), r.size(),
-            edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0));
+          l.c_str(), l.size(),
+          r.c_str(), r.size(),
+          edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0));
 
         if (result.status == EDLIB_STATUS_OK) {
           std::uint32_t lhs_pos = 0;
@@ -2152,6 +2442,7 @@ std::uint32_t Graph::RemoveBubbles() {
 
     RemoveDiploidEdges(marked_edges, true);
     num_bubbles += 1 - marked_edges.empty();
+    std::cerr << "[raven::Graph::Assemble] RemoveBubbles: num_bubbles=" << num_bubbles << std::endl;
   }
 
   return num_bubbles;
@@ -3673,11 +3964,18 @@ std::vector<std::unique_ptr<biosoup::NucleicAcid>> Graph::GetUnitigs(
     if (!primary)
       node_list = nodes_alternate_;
 
+    if (node_list.size() == 0)
+      return std::vector<std::unique_ptr<biosoup::NucleicAcid>> {};
+
     std::vector<std::unique_ptr<biosoup::NucleicAcid>> dst;
     for (const auto& it : node_list) {
-      if (it == nullptr || it->is_rc() || !it->is_unitig) {
+      if (it == nullptr || it->is_rc()) {
         continue;
       }
+
+//      if (!it->is_unitig) {
+//        continue;
+//      }
 
       std::string name = it->sequence.name +
                          " LN:i:" + std::to_string(it->sequence.inflated_len) +
