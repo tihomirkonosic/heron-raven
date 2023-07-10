@@ -1707,9 +1707,9 @@ void Graph::AssembleDiploids() {
 
   timer.Start();
 
-  //SalvageHaplotypesPrimary();
-  //SalvageHaplotypesAlternative();
-  SalvageHaplotypes();
+  SalvageHaplotypesPrimary();
+  SalvageHaplotypesAlternative();
+  //SalvageHaplotypes();
 
   std::cerr << "[raven::Graph::AssembleDiploids] Created haplotypes "
             << std::fixed << timer.Stop() << "s"
