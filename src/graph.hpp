@@ -40,19 +40,18 @@ void serialize(Archive& archive, NucleicAcid& sequence) {  // NOLINT
 
 namespace raven {
 
+extern std::uint32_t min_unitig_size;
+
 constexpr std::uint8_t use_frequencies = 1;
 constexpr std::uint8_t variant_call_th = 3;
 constexpr double freq_low_th = 0.333;
 constexpr double freq_high_th = 0.667;
 constexpr std::uint8_t print_snp_data = 1;
 
-extern std::uint32_t min_unitig_size;
-
 
 class Graph {
  public:
   Graph(
-      bool weaken,
       bool checkpoints,
       std::shared_ptr<thread_pool::ThreadPool> thread_pool = nullptr);
 
@@ -74,7 +73,10 @@ class Graph {
       std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,  // NOLINT
       double disagreement = 0.1,
       unsigned split = 0,
-      std::size_t kMaxNumOverlaps = 16);
+      std::size_t kMaxNumOverlaps = 16,
+      std::uint8_t kmer_len = 15,
+      std::uint8_t window_len = 5,
+      double freq = 0.001);
 
   // simplify with transitive reduction, tip prunning and bubble popping
   void Assemble();
@@ -367,7 +369,6 @@ class Graph {
 
   int stage_;
   bool checkpoints_;
-  bool accurate_;
   double disagreement_;
   std::vector<std::unordered_set<std::uint32_t>> annotations_;
   std::vector<std::vector<std::uint32_t>> anno_;

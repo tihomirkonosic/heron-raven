@@ -314,7 +314,6 @@ std::atomic<std::uint32_t> Graph::Edge::num_objects{0};
       where(where) {}
 
 Graph::Graph(
-    bool weaken,
     bool checkpoints,
     std::shared_ptr<thread_pool::ThreadPool> thread_pool)
     : thread_pool_(thread_pool ?
@@ -322,7 +321,6 @@ Graph::Graph(
           std::make_shared<thread_pool::ThreadPool>(1)),
       stage_(-5),
       checkpoints_(checkpoints),
-      accurate_(weaken),
       disagreement_(),
       annotations_(),
       piles_(),
@@ -333,7 +331,10 @@ void Graph::Construct(
     std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,  // NOLINT
     double disagreement,
     unsigned split,
-    std::size_t kMaxNumOverlaps) {
+    std::size_t kMaxNumOverlaps,
+    std::uint8_t kmer_len,
+    std::uint8_t window_len,
+    double freq) {
   disagreement_ = disagreement;
   if (sequences.empty() || stage_ > -4) {
     return;
@@ -775,11 +776,10 @@ void Graph::Construct(
 
   biosoup::Timer timer{};
 
-  std::uint32_t kmer_len = accurate_ ? 29 : 15;
   ram::MinimizerEngine minimizer_engine{
       thread_pool_,
       kmer_len,
-      accurate_ ? 9U : 5U
+      window_len
   };
 
   // find overlaps and create piles
@@ -801,7 +801,7 @@ void Graph::Construct(
           sequences.begin() + j,
           sequences.begin() + i + 1,
           true);
-      minimizer_engine.Filter(0.001);
+      minimizer_engine.Filter(freq);
 
       std::cerr << "[raven::Graph::Construct] minimized "
                 << j << " - " << i + 1 << " / " << sequences.size() << " "

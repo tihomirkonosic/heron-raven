@@ -17,7 +17,9 @@ std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};
 namespace {
 
   static struct option options[] = {
-    {"weaken", no_argument, nullptr, 'w'},
+    {"kmer-len", required_argument, nullptr, 'K'},
+    {"window-len", required_argument, nullptr, 'W'},
+    {"frequency", required_argument, nullptr, 'F'},
     {"polishing-rounds", required_argument, nullptr, 'p'},
     {"match", required_argument, nullptr, 'm'},
     {"mismatch", required_argument, nullptr, 'n'},
@@ -42,7 +44,7 @@ namespace {
     {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "wp:m:n:g:s:D:f:rdt:vho:u:x:U:";
+  std::string optstr = "K:W:F:p:m:n:g:s:D:f:rdt:vho:u:x:U:";
 
   void Help() {
     std::cout <<
@@ -53,8 +55,15 @@ namespace {
               "    input file in FASTA/FASTQ format (can be compressed with gzip)\n"
               "\n"
               "  options:\n"
-              "    -w, --weaken\n"
-              "      use larger (k, w) when assembling highly accurate sequences\n"
+              "    -K, --kmer-len <int>\n"
+              "      default: 15\n"
+              "      length of minimizers used to find overlaps\n"
+              "    -W, --window-len <int>\n"
+              "      default: 5\n"
+              "      length of sliding window from which minimizers are sampled\n"
+              "    -F, --frequency <double>\n"
+              "      default: 0.001\n"
+              "      threshold for ignoring most frequent minimizers\n"              
               "    -p, --polishing-rounds <int>\n"
               "      default: 0\n"
               "      number of times racon is invoked\n"
@@ -144,8 +153,11 @@ std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(
 }  // namespace
 
 int main(int argc, char** argv) {
-  bool weaken = false;
   unsigned split = 0;
+
+  std::uint8_t kmer_len = 15;
+  std::uint8_t window_len = 5;
+  double freq = 0.001;
 
   std::int32_t num_polishing_rounds = 0;
   std::int8_t m = 3;
@@ -177,8 +189,10 @@ int main(int argc, char** argv) {
   int arg;
   while ((arg = getopt_long(argc, argv, optstr.c_str(), options, nullptr)) != -1) {  // NOLINT
     switch (arg) {
+      case 'K': kmer_len = std::atoi(optarg); break;
+      case 'W': window_len = std::atoi(optarg); break;
+      case 'F': freq = std::atof(optarg); break;      
       case 's': split = std::atoi(optarg); break;
-      case 'w': weaken = true; break;
       case 'p': num_polishing_rounds = atoi(optarg); break;
       case 'm': m = atoi(optarg); break;
       case 'n': n = atoi(optarg); break;
@@ -241,7 +255,7 @@ int main(int argc, char** argv) {
 
   auto thread_pool = std::make_shared<thread_pool::ThreadPool>(num_threads);
 
-  raven::Graph graph{weaken, checkpoints, thread_pool};
+  raven::Graph graph{checkpoints, thread_pool};
 
   if (resume) {
     try {
@@ -300,7 +314,7 @@ int main(int argc, char** argv) {
     timer.Start();
   };
 
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq);
 
   if(ul_read_path.empty()){
     graph.Assemble();
