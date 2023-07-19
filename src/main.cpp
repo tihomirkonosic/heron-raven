@@ -38,10 +38,11 @@ namespace {
     {"output", required_argument, nullptr, 'o'},
     {"ultralong-phasing", required_argument, nullptr, 'u'},
     {"kMaxNumOverlaps", required_argument, nullptr, 'x'},
+    {"min-unitig-size", required_argument, nullptr, 'U'},
     {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "wp:m:n:g:s:D:f:rdt:vho:u:x:";
+  std::string optstr = "wp:m:n:g:s:D:f:rdt:vho:u:x:U:";
 
   void Help() {
     std::cout <<
@@ -102,6 +103,8 @@ namespace {
               "    -x, --kMaxNumOverlaps <long unsigned int>\n"
               "      default: 32\n"
               "      maximum number of overlaps that will be taken during find overlaps and create piles stage\n"              "    -h, --help\n"
+              "    -U, --min-unitig-size <int>\n"
+              "      minimal uniting size (default 9999)\n"  
               "      prints the usage\n";
   }
 
@@ -166,6 +169,7 @@ int main(int argc, char** argv) {
   bool cuda_banded_alignment = false;
 
   std::size_t kMaxNumOverlaps = 16;
+  std::uint32_t min_unitig_size = 9999;
 
 #ifdef CUDA_ENABLED
   optstr += "c:ba:";
@@ -210,6 +214,7 @@ int main(int argc, char** argv) {
         break;
       case 'u': ul_read_path = optarg; break;
       case 'x': kMaxNumOverlaps = std::atof(optarg); break;
+      case 'U': min_unitig_size = std::atoi(optarg); break;
       default: return 1;
     }
   }
@@ -228,6 +233,8 @@ int main(int argc, char** argv) {
   if (sparser == nullptr) {
     return 1;
   }
+
+  raven::min_unitig_size = min_unitig_size;
 
   biosoup::Timer timer{};
   timer.Start();

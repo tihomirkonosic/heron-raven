@@ -20,6 +20,8 @@
 
 namespace raven {
 
+std::uint32_t min_unitig_size = 9999;
+
 Graph::Node::Node(const biosoup::NucleicAcid& sequence)
     : id(num_objects++),
       sequence(sequence),
@@ -73,7 +75,7 @@ Graph::Node::Node(Node* begin, Node* end)
     count += end->count;
   }
 
-  is_unitig = count > 5 && data.size() > 9999;
+  is_unitig = count > 5 && data.size() > min_unitig_size;
 
   sequence = biosoup::NucleicAcid(
     (is_unitig ? "Utg" : "Ctg") + std::to_string(id & (~1UL)),
