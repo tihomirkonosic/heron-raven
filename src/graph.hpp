@@ -46,6 +46,8 @@ constexpr double freq_low_th = 0.333;
 constexpr double freq_high_th = 0.667;
 constexpr std::uint8_t print_snp_data = 1;
 
+extern std::uint32_t min_unitig_size;
+
 
 class Graph {
  public:
