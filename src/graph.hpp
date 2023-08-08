@@ -76,7 +76,8 @@ class Graph {
       std::size_t kMaxNumOverlaps = 16,
       std::uint8_t kmer_len = 15,
       std::uint8_t window_len = 5,
-      double freq = 0.001);
+      double freq = 0.001,
+      std::uint16_t valid_region_treshold = 4);
 
   // simplify with transitive reduction, tip prunning and bubble popping
   void Assemble();

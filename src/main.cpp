@@ -41,6 +41,7 @@ namespace {
     {"ultralong-phasing", required_argument, nullptr, 'u'},
     {"kMaxNumOverlaps", required_argument, nullptr, 'x'},
     {"min-unitig-size", required_argument, nullptr, 'U'},
+    {"valid-region", required_argument, nullptr, 'R'},
     {nullptr, 0, nullptr, 0}
   };
 
@@ -114,7 +115,10 @@ namespace {
               "      maximum number of overlaps that will be taken during find overlaps and create piles stage\n"              "    -h, --help\n"
               "    -U, --min-unitig-size <int>\n"
               "      minimal uniting size (default 9999)\n"  
-              "      prints the usage\n";
+              "      prints the usage\n"
+              "    --valid-region <int>\n"
+              "      default: 4\n"
+              "      overlap valid region size";
   }
 
 std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(
@@ -182,6 +186,7 @@ int main(int argc, char** argv) {
 
   std::size_t kMaxNumOverlaps = 16;
   std::uint32_t min_unitig_size = 9999;
+  std::uint16_t valid_region_size = 4;
 
 #ifdef CUDA_ENABLED
   optstr += "c:ba:";
@@ -229,6 +234,7 @@ int main(int argc, char** argv) {
       case 'u': ul_read_path = optarg; break;
       case 'x': kMaxNumOverlaps = std::atof(optarg); break;
       case 'U': min_unitig_size = std::atoi(optarg); break;
+      case 'R': valid_region_size = std::atoi(optarg); break;
       default: return 1;
     }
   }
@@ -314,7 +320,7 @@ int main(int argc, char** argv) {
     timer.Start();
   };
 
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq, valid_region_size);
 
   if(ul_read_path.empty()){
     graph.Assemble();

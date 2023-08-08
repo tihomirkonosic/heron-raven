@@ -334,7 +334,8 @@ void Graph::Construct(
     std::size_t kMaxNumOverlaps,
     std::uint8_t kmer_len,
     std::uint8_t window_len,
-    double freq) {
+    double freq,
+    std::uint16_t valid_region_treshold) {
   disagreement_ = disagreement;
   if (sequences.empty() || stage_ > -4) {
     return;
@@ -943,7 +944,7 @@ void Graph::Construct(
     for (std::uint32_t i = 0; i < piles_.size(); ++i) {
       thread_futures.emplace_back(thread_pool_->Submit(
           [&] (std::uint32_t i) -> void {
-            piles_[i]->FindValidRegion(4);
+            piles_[i]->FindValidRegion(valid_region_treshold);
             if (piles_[i]->is_invalid()) {
               std::vector<biosoup::Overlap>().swap(overlaps[i]);
             } else {
@@ -1575,7 +1576,7 @@ void Graph::Assemble() {
     ++stage_;
     if (checkpoints_) {
       timer.Start();
-      Store();
+      //Store();
       std::cerr << "[raven::Graph::Assemble] reached checkpoint "
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
@@ -1606,7 +1607,7 @@ void Graph::Assemble() {
     ++stage_;
     if (checkpoints_) {
       timer.Start();
-      Store();
+      //Store();
       std::cerr << "[raven::Graph::Assemble] reached checkpoint "
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
@@ -1617,16 +1618,16 @@ void Graph::Assemble() {
   if (stage_ == -1) {
     timer.Start();
 
-//    if (annotations_.empty()) {
-//      CreateUnitigs(42);  // speed up force directed layout
-//    }
-    //RemoveLongEdges(16);
+    if (annotations_.empty()) {
+      CreateUnitigs(42);  // speed up force directed layout
+    }
+    RemoveLongEdges(16);
 
     std::cerr << "[raven::Graph::Assemble] removed long edges "
               << std::fixed << timer.Stop() << "s"
               << std::endl;
 
-    //PrintGfa("after_force.gfa");
+    PrintGfa("after_force.gfa");
   }
 
   // checkpoint
@@ -1709,9 +1710,9 @@ void Graph::AssembleDiploids() {
 
   timer.Start();
 
-  SalvageHaplotypesPrimary();
-  SalvageHaplotypesAlternative();
-  //SalvageHaplotypes();
+  //SalvageHaplotypesPrimary();
+  //SalvageHaplotypesAlternative();
+  SalvageHaplotypes();
 
   std::cerr << "[raven::Graph::AssembleDiploids] Created haplotypes "
             << std::fixed << timer.Stop() << "s"
