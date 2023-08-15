@@ -334,7 +334,8 @@ void Graph::Construct(
     std::size_t kMaxNumOverlaps,
     std::uint8_t kmer_len,
     std::uint8_t window_len,
-    double freq) {
+    double freq,
+    bool paf) {
   disagreement_ = disagreement;
   if (sequences.empty() || stage_ > -4) {
     return;
@@ -935,6 +936,10 @@ void Graph::Construct(
 
   }
 
+  if(paf == true) {
+    PrintOverlaps(overlaps, "afterSNP.paf");
+  }
+  
   // trim and annotate piles
   if (stage_ == -5) {
     timer.Start();
@@ -1077,6 +1082,10 @@ void Graph::Construct(
               << std::endl;
   }
 
+  if (paf == true) {
+    PrintOverlaps(overlaps, "afterContained.paf");
+  }
+  
   // resolve chimeric sequences
   if (stage_ == -5) {
     timer.Start();
@@ -1147,6 +1156,10 @@ void Graph::Construct(
               << std::endl;
   }
 
+  if (paf == true) {
+    PrintOverlaps(overlaps, "afterChimeric.paf");
+  }
+  
   // checkpoint
   if (stage_ == -5) {
     ++stage_;
@@ -4324,6 +4337,33 @@ void Graph::PrintGfa(const std::string& path) const {
        << "\t"  << it->tail->sequence.inflated_len - it->length << 'M'
        << std::endl;
   }
+  os.close();
+}
+
+void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, const std::string& path) const {  
+  if (path.empty()) {
+    return;
+  }
+
+  std::ofstream os(path);
+
+  for (const auto& it : overlaps) {
+    for (const auto& jt : it) {
+      os << jt.lhs_id
+         << "\t" << 0  // length
+         << "\t" << jt.lhs_begin
+         << "\t" << jt.lhs_end
+         << "\t" << (jt.strand ? "-" : "+")
+         << "\t" << jt.rhs_id
+         << "\t" << 0  // length
+         << "\t" << jt.rhs_begin
+         << "\t" << jt.rhs_end
+         << "\t" << 0
+         << "\t" << 0
+         << "\t" << 255;
+    }
+  }
+
   os.close();
 }
 

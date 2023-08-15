@@ -76,7 +76,8 @@ class Graph {
       std::size_t kMaxNumOverlaps = 16,
       std::uint8_t kmer_len = 15,
       std::uint8_t window_len = 5,
-      double freq = 0.001);
+      double freq = 0.001,
+      bool paf = false);
 
   // simplify with transitive reduction, tip prunning and bubble popping
   void Assemble();
@@ -121,6 +122,9 @@ class Graph {
 
   // draw with Bandage
   void PrintGfa(const std::string& path) const;
+
+    // print overlaps in PAF file format
+  void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, const std::string& path) const;
 
   // draw unitig graph with Bandage
   void PrintUnitigGfa(const std::string& path) const;
