@@ -42,10 +42,11 @@ namespace {
     {"kMaxNumOverlaps", required_argument, nullptr, 'x'},
     {"min-unitig-size", required_argument, nullptr, 'U'},
     {"paf", no_argument, nullptr, 'P'},
+    {"valid-region", required_argument, nullptr, 'R'},
     {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "K:W:F:p:m:n:g:s:D:f:rdt:vho:u:x:U:P";
+  std::string optstr = "K:W:F:p:m:n:g:s:D:f:rdt:vho:u:x:U:PR:";
 
   void Help() {
     std::cout <<
@@ -114,9 +115,12 @@ namespace {
               "      default: 32\n"
               "      maximum number of overlaps that will be taken during find overlaps and create piles stage\n"              "    -h, --help\n"
               "    -U, --min-unitig-size <int>\n"
-              "      minimal uniting size (default 9999)\n"
+              "      minimal uniting size (default 9999)\n"  
               "    -P, --paf\n"
-              "      overlaps are stored to files in PAF format\n"                
+              "      overlaps are stored to files in PAF format\n"
+              "    -R --valid-region <int>\n"
+              "      default: 4\n"
+              "      overlap valid region size"
               "      prints the usage\n";
   }
 
@@ -185,7 +189,7 @@ int main(int argc, char** argv) {
 
   std::size_t kMaxNumOverlaps = 16;
   std::uint32_t min_unitig_size = 9999;
-
+  std::uint16_t valid_region_size = 4;
   bool paf = false;
 
 #ifdef CUDA_ENABLED
@@ -235,6 +239,7 @@ int main(int argc, char** argv) {
       case 'x': kMaxNumOverlaps = std::atof(optarg); break;
       case 'U': min_unitig_size = std::atoi(optarg); break;
       case 'P': paf = true; break;
+      case 'R': valid_region_size = std::atoi(optarg); break;
       default: return 1;
     }
   }
@@ -320,7 +325,7 @@ int main(int argc, char** argv) {
     timer.Start();
   };
 
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq, paf);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq, paf, valid_region_size);
 
   if(ul_read_path.empty()){
     graph.Assemble();
