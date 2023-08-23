@@ -95,7 +95,10 @@ endif ()
 
 add_library(raven
   src/graph.cpp
-  src/pile.cpp)
+  src/pile.cpp
+  src/unitig.cpp
+  src/node.cpp
+  src/edge.cpp)
 
 target_link_libraries(raven
   cereal::cereal
