@@ -1710,7 +1710,7 @@ void Graph::AssembleDiploids() {
   timer.Start();
 
   while (true) {
-    std::uint32_t num_changes = RemoveSnpBubbles();
+    std::uint32_t num_changes = RemoveBubbles();
 
     if (num_changes == 0) {
       break;
@@ -4338,6 +4338,33 @@ void Graph::PrintGfa(const std::string& path) const {
        << "\t"  << it->tail->sequence.inflated_len - it->length << 'M'
        << std::endl;
   }
+  os.close();
+}
+
+void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, const std::string& path) const {
+  if (path.empty()) {
+    return;
+  }
+
+  std::ofstream os(path);
+
+  for (const auto& it : overlaps) {
+    for (const auto& jt : it) {
+      os << jt.lhs_id
+         << "\t" << 0  // length
+         << "\t" << jt.lhs_begin
+         << "\t" << jt.lhs_end
+         << "\t" << (jt.strand ? "-" : "+")
+         << "\t" << jt.rhs_id
+         << "\t" << 0  // length
+         << "\t" << jt.rhs_begin
+         << "\t" << jt.rhs_end
+         << "\t" << 0
+         << "\t" << 0
+         << "\t" << 255;
+    }
+  }
+
   os.close();
 }
 
