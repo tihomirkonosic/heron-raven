@@ -23,6 +23,7 @@
 
 #include "pile.hpp"
 #include "node.h"
+#include "edge.h"
 
 namespace biosoup {
 
@@ -108,9 +109,6 @@ class Graph {
 
   // draw with Bandage
   void PrintGfa(const std::string& path) const;
-
-  // draw unitig graph with Bandage
-  void PrintUnitigGfa(const std::string& path) const;
 
   // cereal load wrapper
   void Load();

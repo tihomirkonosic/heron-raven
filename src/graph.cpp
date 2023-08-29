@@ -3523,49 +3523,6 @@ void Graph::PrintGfa(const std::string& path) const {
   os.close();
 }
 
-void Graph::PrintUnitigGfa(const std::string& path) const {
-  if (path.empty()) {
-    return;
-  }
-  std::ofstream os(path);
-  for (const auto& it : unitig_nodes_) {
-  if ((it == nullptr) || it->is_rc() ||
-      (it->count == 1 && it->outdegree() == 0 && it->indegree() == 0)) {
-    continue;
-  }
-
-    os << "S\t" << it->sequence.name
-       << "\t"  << it->sequence.InflateData()
-       << "\tLN:i:" << it->sequence.inflated_len
-       << "\tRC:i:" << it->count
-       << "\tCL:z:" << (it->color ? "blue" : "orange")
-       << std::endl;
-    if (it->is_circular) {
-      os << "A\t" << it->sequence.name << "\t"
-        << it->sequence.name << "\t"
-        << std::endl;
-      continue;
-    }
-    for(const auto& unitig_node : it->unitig_nodes){
-      os << "A\t" << it->sequence.name << "\t"
-         << unitig_node->sequence.name << "\t"
-         << std::endl;
-    };
-  }
-  for (const auto& it : unitig_edges_) {
-    if (it == nullptr || it->is_rc()) {
-      continue;
-    }
-    os << "L\t" << it->tail->sequence.name << "\t" << (it->tail->is_rc() ? '-' : '+')  // NOLINT
-       << "\t"  << it->head->sequence.name << "\t" << (it->head->is_rc() ? '-' : '+')  // NOLINT
-       << "\t"  << it->tail->sequence.inflated_len - it->length << 'M'
-       << std::endl;
-  }
-  os.close();
-
-
-}
-
 void Graph::Store() const {
   std::ofstream os("raven.cereal");
   try {
