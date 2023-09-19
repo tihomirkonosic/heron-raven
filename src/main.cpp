@@ -162,8 +162,13 @@ std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(
 int main(int argc, char** argv) {
   unsigned split = 0;
 
-  std::uint8_t kmer_len = 15;
-  std::uint8_t window_len = 5;
+
+  std::uint8_t kmer_len = 31;
+  std::uint8_t window_len = 17;
+  std::uint16_t bandwidth = 500;
+  std::uint16_t chain_n = 4;
+  std::uint16_t match_n = 100;
+  std::uint16_t gap_size = 10000;
   double freq = 0.001;
 
   std::int32_t num_polishing_rounds = 0;
@@ -325,7 +330,7 @@ int main(int argc, char** argv) {
     timer.Start();
   };
 
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, freq, paf, valid_region_size);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, paf, valid_region_size);
 
   if(ul_read_path.empty()){
     graph.Assemble();

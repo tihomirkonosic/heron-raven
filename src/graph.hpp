@@ -42,7 +42,7 @@ namespace raven {
 
 extern std::uint32_t min_unitig_size;
 
-constexpr std::uint8_t use_frequencies = 1;
+constexpr std::uint8_t use_frequencies = 0;
 constexpr std::uint8_t variant_call_th = 3;
 constexpr double freq_low_th = 0.333;
 constexpr double freq_high_th = 0.667;
@@ -74,8 +74,12 @@ class Graph {
       double disagreement = 0.1,
       unsigned split = 0,
       std::size_t kMaxNumOverlaps = 16,
-      std::uint8_t kmer_len = 15,
-      std::uint8_t window_len = 5,
+      std::uint8_t kmer_len = 41,
+      std::uint8_t window_len = 41,
+      std::uint16_t bandwidth = 500,
+      std::uint16_t chain_n = 4,
+      std::uint16_t match_n = 100,
+      std::uint16_t gap_size = 10000,
       double freq = 0.001,
       bool paf = false,
       std::uint16_t valid_region_treshold = 4);
@@ -125,7 +129,7 @@ class Graph {
   void PrintGfa(const std::string& path) const;
 
     // print overlaps in PAF file format
-  void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, const std::string& path) const;
+  void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences, bool print_cigar, const std::string& path) const;
 
   // draw unitig graph with Bandage
   void PrintUnitigGfa(const std::string& path) const;

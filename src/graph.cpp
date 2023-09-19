@@ -334,6 +334,10 @@ void Graph::Construct(
     std::size_t kMaxNumOverlaps,
     std::uint8_t kmer_len,
     std::uint8_t window_len,
+    std::uint16_t bandwidth,
+    std::uint16_t chain_n,
+    std::uint16_t match_n,
+    std::uint16_t gap_size,
     double freq,
     bool paf,
     std::uint16_t valid_region_treshold) {
@@ -781,7 +785,11 @@ void Graph::Construct(
   ram::MinimizerEngine minimizer_engine{
       thread_pool_,
       kmer_len,
-      window_len
+      window_len,
+      bandwidth,
+      chain_n,
+      match_n,
+      gap_size
   };
 
   // find overlaps and create piles
@@ -938,7 +946,7 @@ void Graph::Construct(
   }
 
   if(paf == true) {
-    PrintOverlaps(overlaps, "afterSNP.paf");
+    PrintOverlaps(overlaps, sequences, false, "afterSNP.paf");
   }
   
   // trim and annotate piles
@@ -1084,7 +1092,7 @@ void Graph::Construct(
   }
 
   if (paf == true) {
-    PrintOverlaps(overlaps, "afterContained.paf");
+    PrintOverlaps(overlaps, sequences,  false, "afterContained.paf");
   }
   
   // resolve chimeric sequences
@@ -1158,7 +1166,7 @@ void Graph::Construct(
   }
 
   if (paf == true) {
-    PrintOverlaps(overlaps, "afterChimeric.paf");
+    PrintOverlaps(overlaps, sequences, false, "afterChimeric.paf");
   }
   
   // checkpoint
@@ -4341,7 +4349,7 @@ void Graph::PrintGfa(const std::string& path) const {
   os.close();
 }
 
-void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, const std::string& path) const {
+void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences, bool print_cigar, const std::string& path) const {
   if (path.empty()) {
     return;
   }
@@ -4350,18 +4358,20 @@ void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps, c
 
   for (const auto& it : overlaps) {
     for (const auto& jt : it) {
-      os << jt.lhs_id
-         << "\t" << 0  // length
+      os << sequences[jt.lhs_id]->name
+         << "\t" << sequences[jt.lhs_id]->inflated_len  // length
          << "\t" << jt.lhs_begin
          << "\t" << jt.lhs_end
-         << "\t" << (jt.strand ? "-" : "+")
-         << "\t" << jt.rhs_id
-         << "\t" << 0  // length
+         << "\t" << (jt.strand ? "+" : "-")
+         << "\t" << sequences[jt.rhs_id]->name
+         << "\t" << sequences[jt.rhs_id]->inflated_len  // length
          << "\t" << jt.rhs_begin
          << "\t" << jt.rhs_end
-         << "\t" << 0
-         << "\t" << 0
-         << "\t" << 255;
+         << "\t" << 0 // residue matches
+         << "\t" << 0 // alignment block length
+         << "\t" << 255
+         << "\t" << "cg:" << (print_cigar ? jt.alignment : "0")
+         << std::endl;
     }
   }
 
