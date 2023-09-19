@@ -96,13 +96,17 @@ endif ()
 add_library(raven
   src/graph.cpp
   src/pile.cpp
-  src/unitig.cpp
   src/node.cpp
-  src/edge.cpp)
+  src/edge.cpp
+  src/parser.cpp
+  src/graph_constructor.cpp
+  src/graph_assembler.cpp
+  src/graph_polisher.cpp)
 
 target_link_libraries(raven
   cereal::cereal
-  racon::racon)
+  racon::racon
+  bioparser::bioparser)
 
 target_include_directories(raven PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
@@ -111,8 +115,7 @@ add_executable(raven_exe
   src/main.cpp)
 
 target_link_libraries(raven_exe
-  raven
-  bioparser::bioparser)
+  raven)
 
 if (racon_enable_cuda)
   target_compile_definitions(raven_exe PRIVATE CUDA_ENABLED)

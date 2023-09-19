@@ -1,0 +1,51 @@
+
+#ifndef RAVEN_GRAPH_ASSEMBLER_H
+#define RAVEN_GRAPH_ASSEMBLER_H
+
+#include <cstdint>
+#include <memory>
+#include "biosoup/nucleic_acid.hpp"
+#include "graph.hpp"
+#include "marked_edge.h"
+
+namespace raven {
+
+	class Graph_Assembler {
+	public:
+		Graph_Assembler() = default;
+		Graph_Assembler(Graph &graph,
+						std::shared_ptr<thread_pool::ThreadPool> thread_pool = nullptr);
+
+		// simplify with transitive reduction, tip prunning and bubble popping
+		void Assemble();
+
+		void AssembleDiploids();
+
+		void UlAssemble(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_sequences);
+
+	private:
+		Graph &graph_;
+		std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
+
+		// inspired by (Myers 1995) & (Myers 2005)
+		std::uint32_t RemoveTransitiveEdges();
+
+		std::uint32_t RemoveTips();
+
+		std::uint32_t RemoveBubbles();
+
+		std::uint32_t RemoveSnpBubbles();
+
+		// remove long edges in force directed layout
+		std::uint32_t RemoveLongEdges(std::uint32_t num_round);
+
+		// use (Fruchterman & Reingold 1991) with (Barnes & Hut 1986) approximation
+		// (draw with misc/plotter.py)
+		void CreateForceDirectedLayout(const std::string& path = "");
+
+		void ResolveGraphWithUl(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_reads);
+	};
+
+} // raven
+
+#endif //RAVEN_GRAPH_ASSEMBLER_H
