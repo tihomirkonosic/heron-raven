@@ -11,9 +11,9 @@
 namespace raven {
     Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
             : graph_(graph), thread_pool_(thread_pool ?
-                           thread_pool :
-                           std::make_shared<thread_pool::ThreadPool>(1)) {
-	}
+                                          thread_pool :
+                                          std::make_shared<thread_pool::ThreadPool>(1)) {
+    }
 
 
     void Graph_Constructor::Construct(
@@ -23,7 +23,12 @@ namespace raven {
             std::size_t kMaxNumOverlaps,
             std::uint8_t kmer_len,
             std::uint8_t window_len,
+            std::uint16_t bandwidth,
+            std::uint16_t chain_n,
+            std::uint16_t match_n,
+            std::uint16_t gap_size,
             double freq,
+            bool paf,
             std::uint16_t valid_region_treshold) {
 
         disagreement_ = disagreement;
@@ -151,7 +156,7 @@ namespace raven {
 
         auto overlap_update = [&](biosoup::Overlap &o) -> bool {
             if (graph_.piles_[o.lhs_id]->is_invalid() ||
-					graph_.piles_[o.rhs_id]->is_invalid()) {
+                graph_.piles_[o.rhs_id]->is_invalid()) {
                 return false;
             }
             if (o.lhs_begin >= graph_.piles_[o.lhs_id]->end() ||
@@ -163,7 +168,7 @@ namespace raven {
 
             std::uint32_t lhs_begin = o.lhs_begin + (o.strand ?
                                                      (o.rhs_begin < graph_.piles_[o.rhs_id]->begin() ?
-													  graph_.piles_[o.rhs_id]->begin() - o.rhs_begin : 0)
+                                                      graph_.piles_[o.rhs_id]->begin() - o.rhs_begin : 0)
                                                               :
                                                      (o.rhs_end > graph_.piles_[o.rhs_id]->end() ?
                                                       o.rhs_end - graph_.piles_[o.rhs_id]->end() : 0));
@@ -172,11 +177,11 @@ namespace raven {
                                                   o.rhs_end - graph_.piles_[o.rhs_id]->end() : 0)
                                                           :
                                                  (o.rhs_begin < graph_.piles_[o.rhs_id]->begin() ?
-												  graph_.piles_[o.rhs_id]->begin() - o.rhs_begin : 0));
+                                                  graph_.piles_[o.rhs_id]->begin() - o.rhs_begin : 0));
 
             std::uint32_t rhs_begin = o.rhs_begin + (o.strand ?
                                                      (o.lhs_begin < graph_.piles_[o.lhs_id]->begin() ?
-													  graph_.piles_[o.lhs_id]->begin() - o.lhs_begin : 0)
+                                                      graph_.piles_[o.lhs_id]->begin() - o.lhs_begin : 0)
                                                               :
                                                      (o.lhs_end > graph_.piles_[o.lhs_id]->end() ?
                                                       o.lhs_end - graph_.piles_[o.lhs_id]->end() : 0));
@@ -185,7 +190,7 @@ namespace raven {
                                                   o.lhs_end - graph_.piles_[o.lhs_id]->end() : 0)
                                                           :
                                                  (o.lhs_begin < graph_.piles_[o.lhs_id]->begin() ?
-												  graph_.piles_[o.lhs_id]->begin() - o.lhs_begin : 0));
+                                                  graph_.piles_[o.lhs_id]->begin() - o.lhs_begin : 0));
 
             if (lhs_begin >= graph_.piles_[o.lhs_id]->end() ||
                 lhs_end <= graph_.piles_[o.lhs_id]->begin() ||
@@ -214,12 +219,12 @@ namespace raven {
 
         auto overlap_type = [&](const biosoup::Overlap &o) -> std::uint32_t {
             std::uint32_t lhs_length =
-					graph_.piles_[o.lhs_id]->end() - graph_.piles_[o.lhs_id]->begin();
+                    graph_.piles_[o.lhs_id]->end() - graph_.piles_[o.lhs_id]->begin();
             std::uint32_t lhs_begin = o.lhs_begin - graph_.piles_[o.lhs_id]->begin();
             std::uint32_t lhs_end = o.lhs_end - graph_.piles_[o.lhs_id]->begin();
 
             std::uint32_t rhs_length =
-					graph_.piles_[o.rhs_id]->end() - graph_.piles_[o.rhs_id]->begin();
+                    graph_.piles_[o.rhs_id]->end() - graph_.piles_[o.rhs_id]->begin();
             std::uint32_t rhs_begin = o.strand ?
                                       o.rhs_begin - graph_.piles_[o.rhs_id]->begin() :
                                       rhs_length - (o.rhs_end - graph_.piles_[o.rhs_id]->begin());
@@ -481,13 +486,17 @@ namespace raven {
         ram::MinimizerEngine minimizer_engine{
                 thread_pool_,
                 kmer_len,
-                window_len
+                window_len,
+                bandwidth,
+                chain_n,
+                match_n,
+                gap_size
         };
 
         // find overlaps and create piles
         if (graph_.stage() == Graph_Stage::Construct_Graph) {
             for (const auto &it: sequences) {
-				graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
+                graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
             }
             std::size_t bytes = 0;
             for (std::uint32_t i = 0, j = 0; i < sequences.size(); ++i) {
@@ -589,7 +598,7 @@ namespace raven {
 
                         void_futures.emplace_back(thread_pool_->Submit(
                                 [&](std::uint32_t i) -> void {
-									graph_.piles_[i]->AddLayers(
+                                    graph_.piles_[i]->AddLayers(
                                             overlaps[i].begin() + num_overlaps[i],
                                             overlaps[i].end());
 
@@ -646,6 +655,10 @@ namespace raven {
 
         }
 
+        if (paf == true) {
+            graph_.PrintOverlaps(overlaps, sequences, false, "afterSNP.paf");
+        }
+
         // trim and annotate piles
         if (graph_.stage() == Graph_Stage::Construct_Graph) {
             timer.Start();
@@ -654,12 +667,12 @@ namespace raven {
             for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
                 thread_futures.emplace_back(thread_pool_->Submit(
                         [&](std::uint32_t i) -> void {
-							graph_.piles_[i]->FindValidRegion(valid_region_treshold);
+                            graph_.piles_[i]->FindValidRegion(valid_region_treshold);
                             if (graph_.piles_[i]->is_invalid()) {
                                 std::vector<biosoup::Overlap>().swap(overlaps[i]);
                             } else {
-								graph_.piles_[i]->FindMedian();
-								graph_.piles_[i]->FindChimericRegions();
+                                graph_.piles_[i]->FindMedian();
+                                graph_.piles_[i]->FindChimericRegions();
                             }
                         },
                         i));
@@ -767,10 +780,10 @@ namespace raven {
                     std::uint32_t type = overlap_type(overlaps[i][j]);
                     if (type == 1 &&
                         !graph_.piles_[overlaps[i][j].rhs_id]->is_maybe_chimeric()) {
-						graph_.piles_[i]->set_is_contained();
+                        graph_.piles_[i]->set_is_contained();
                     } else if (type == 2 &&
                                !graph_.piles_[i]->is_maybe_chimeric()) {
-						graph_.piles_[overlaps[i][j].rhs_id]->set_is_contained();
+                        graph_.piles_[overlaps[i][j].rhs_id]->set_is_contained();
                     } else {
                         overlaps[i][k++] = overlaps[i][j];
                     }
@@ -779,7 +792,7 @@ namespace raven {
             }
             for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
                 if (graph_.piles_[i]->is_contained()) {
-					graph_.piles_[i]->set_is_invalid();
+                    graph_.piles_[i]->set_is_invalid();
                     std::vector<biosoup::Overlap>().swap(overlaps[i]);
                 }
             }
@@ -787,6 +800,10 @@ namespace raven {
             std::cerr << "[raven::Graph::Construct] removed contained sequences "
                       << std::fixed << timer.Stop() << "s"
                       << std::endl;
+        }
+
+        if (paf == true) {
+            graph_.PrintOverlaps(overlaps, sequences, false, "afterContained.paf");
         }
 
         // resolve chimeric sequences
@@ -810,7 +827,7 @@ namespace raven {
                     for (const auto &jt: it) {
                         thread_futures.emplace_back(thread_pool_->Submit(
                                 [&](std::uint32_t i) -> void {
-									graph_.piles_[i]->ClearChimericRegions(median);
+                                    graph_.piles_[i]->ClearChimericRegions(median);
                                     if (graph_.piles_[i]->is_invalid()) {
                                         std::vector<biosoup::Overlap>().swap(overlaps[i]);
                                     }
@@ -841,11 +858,11 @@ namespace raven {
                         for (const auto &jt: it) {
                             std::uint32_t type = overlap_type(jt);
                             if (type == 1) {
-								graph_.piles_[jt.lhs_id]->set_is_contained();
-								graph_.piles_[jt.lhs_id]->set_is_invalid();
+                                graph_.piles_[jt.lhs_id]->set_is_contained();
+                                graph_.piles_[jt.lhs_id]->set_is_invalid();
                             } else if (type == 2) {
-								graph_.piles_[jt.rhs_id]->set_is_contained();
-								graph_.piles_[jt.rhs_id]->set_is_invalid();
+                                graph_.piles_[jt.rhs_id]->set_is_contained();
+                                graph_.piles_[jt.rhs_id]->set_is_invalid();
                             }
                         }
                     }
@@ -857,6 +874,10 @@ namespace raven {
             std::cerr << "[raven::Graph::Construct] removed chimeric sequences "
                       << std::fixed << timer.Stop() << "s"
                       << std::endl;
+        }
+
+        if (paf == true) {
+            graph_.PrintOverlaps(overlaps, sequences, false, "afterChimeric.paf");
         }
 
         // checkpoint
@@ -876,7 +897,8 @@ namespace raven {
             std::sort(sequences.begin(), sequences.end(),
                       [&](const std::unique_ptr<biosoup::NucleicAcid> &lhs,
                           const std::unique_ptr<biosoup::NucleicAcid> &rhs) -> bool {
-                          return graph_.piles_[lhs->id]->is_invalid() < graph_.piles_[rhs->id]->is_invalid() ||  // NOLINT
+                          return graph_.piles_[lhs->id]->is_invalid() < graph_.piles_[rhs->id]->is_invalid() ||
+                                 // NOLINT
                                  (graph_.piles_[lhs->id]->is_invalid() == graph_.piles_[rhs->id]->is_invalid() &&
                                   lhs->id < rhs->id);  // NOLINT
                       });
@@ -929,7 +951,7 @@ namespace raven {
                                         true,  // avoid symmetric
                                         false,  // minhash
                                         &filtered);
-								graph_.piles_[sequences[i]->id]->AddKmers(filtered, kmer_len, sequences[i]); // NOLINT
+                                graph_.piles_[sequences[i]->id]->AddKmers(filtered, kmer_len, sequences[i]); // NOLINT
 
                                 std::uint32_t k = 0;
                                 for (std::uint32_t j = 0; j < dst.size(); ++j) {
@@ -1038,9 +1060,9 @@ namespace raven {
                         if (type == 0) {
                             continue;
                         } else if (type == 1) {
-							graph_.piles_[jt.lhs_id]->set_is_contained();
+                            graph_.piles_[jt.lhs_id]->set_is_contained();
                         } else if (type == 2) {
-							graph_.piles_[jt.rhs_id]->set_is_contained();
+                            graph_.piles_[jt.rhs_id]->set_is_contained();
                         } else {
                             if (overlaps.back().size() &&
                                 overlaps.back().back().lhs_id == jt.lhs_id &&
@@ -1068,7 +1090,7 @@ namespace raven {
             std::vector<std::future<void>> thread_futures;
             for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
                 if (graph_.piles_[i]->is_contained()) {
-					graph_.piles_[i]->set_is_invalid();
+                    graph_.piles_[i]->set_is_invalid();
                 }
             }
 
@@ -1114,7 +1136,7 @@ namespace raven {
                     for (const auto &jt: it) {
                         futures.emplace_back(thread_pool_->Submit(
                                 [&](std::uint32_t i) -> void {
-									graph_.piles_[i]->FindRepetitiveRegions(median);
+                                    graph_.piles_[i]->FindRepetitiveRegions(median);
                                 },
                                 jt));
                     }
@@ -1124,8 +1146,8 @@ namespace raven {
                 }
 
                 for (const auto &it: overlaps.back()) {
-					graph_.piles_[it.lhs_id]->UpdateRepetitiveRegions(it);
-					graph_.piles_[it.rhs_id]->UpdateRepetitiveRegions(it);
+                    graph_.piles_[it.lhs_id]->UpdateRepetitiveRegions(it);
+                    graph_.piles_[it.rhs_id]->UpdateRepetitiveRegions(it);
                 }
 
                 bool is_changed = false;
@@ -1133,7 +1155,7 @@ namespace raven {
                 for (std::uint32_t i = 0; i < overlaps.back().size(); ++i) {
                     const auto &it = overlaps.back()[i];
                     if (graph_.piles_[it.lhs_id]->CheckRepetitiveRegions(it) ||
-							graph_.piles_[it.rhs_id]->CheckRepetitiveRegions(it)) {
+                        graph_.piles_[it.rhs_id]->CheckRepetitiveRegions(it)) {
                         is_changed = true;
                     } else {
                         overlaps.back()[j++] = it;
@@ -1147,7 +1169,7 @@ namespace raven {
 
                 for (const auto &it: components) {
                     for (const auto &jt: it) {
-						graph_.piles_[jt]->ClearRepetitiveRegions();
+                        graph_.piles_[jt]->ClearRepetitiveRegions();
                     }
                 }
             }
@@ -1176,7 +1198,7 @@ namespace raven {
                         annotations.emplace(jt - it->begin());
                     }
                 }
-				graph_.annotations_[it->id()].swap(annotations);
+                graph_.annotations_[it->id()].swap(annotations);
 
                 auto sequence = biosoup::NucleicAcid{
                         sequences[it->id()]->name,
@@ -1224,8 +1246,8 @@ namespace raven {
                 }
 
                 auto edge = std::make_shared<Edge>(tail, head, length);
-				graph_.edges_.emplace_back(edge);
-				graph_.edges_.emplace_back(std::make_shared<Edge>(head->pair, tail->pair, length_pair));  // NOLINT
+                graph_.edges_.emplace_back(edge);
+                graph_.edges_.emplace_back(std::make_shared<Edge>(head->pair, tail->pair, length_pair));  // NOLINT
                 edge->pair = graph_.edges_.back().get();
                 edge->pair->pair = edge.get();
             }
@@ -1234,7 +1256,7 @@ namespace raven {
                       << std::fixed << timer.Stop() << "s"
                       << std::endl;
 
-			graph_.PrintGfa("after_construction.gfa");
+            graph_.PrintGfa("after_construction.gfa");
         }
 
         // checkpoint
@@ -1242,7 +1264,7 @@ namespace raven {
             graph_.advance_stage();
             if (graph_.use_checkpoints()) {
                 timer.Start();
-				graph_.Store();
+                graph_.Store();
                 std::cerr << "[raven::Graph::Construct] reached checkpoint "
                           << std::fixed << timer.Stop() << "s"
                           << std::endl;
