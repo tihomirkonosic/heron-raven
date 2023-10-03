@@ -9,12 +9,12 @@
 
 namespace raven {
 
-	class Parser {
-	public:
-		Parser() = default;
+  class Parser {
+  public:
+    Parser() = default;
 
-		std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(const std::string &path);
-	};
+    std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(const std::string &path);
+  };
 
 } // raven
 

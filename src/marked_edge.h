@@ -9,6 +9,7 @@ namespace raven {
   struct MarkedEdge {
   public:
     MarkedEdge() = default;
+
     ~MarkedEdge() = default;
 
     MarkedEdge(std::uint32_t id)

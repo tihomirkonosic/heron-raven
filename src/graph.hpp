@@ -27,189 +27,188 @@
 #include "marked_edge.h"
 
 namespace raven {
-    constexpr std::uint8_t use_frequencies = 0;
-    constexpr std::uint8_t variant_call_th = 3;
-    constexpr double freq_low_th = 0.333;
-    constexpr double freq_high_th = 0.667;
-    constexpr std::uint8_t print_snp_data = 1;
+  constexpr std::uint8_t use_frequencies = 0;
+  constexpr std::uint8_t variant_call_th = 3;
+  constexpr double freq_low_th = 0.333;
+  constexpr double freq_high_th = 0.667;
+  constexpr std::uint8_t print_snp_data = 1;
 
-    enum struct Graph_Stage {
-        Construct_Graph,
-        Construct_Graph_2,
-        Assemble_Transitive_Edges,
-        Assemble_Tips_Bubbles,
-        Assemble_Force_Directed,
-        Assemble_Diploids
-    };
+  enum struct Graph_Stage {
+    Construct_Graph,
+    Construct_Graph_2,
+    Assemble_Transitive_Edges,
+    Assemble_Tips_Bubbles,
+    Assemble_Force_Directed,
+    Assemble_Diploids
+  };
 
-    class Graph {
-    public:
-        Graph() = default;  // needed for cereal
+  class Graph {
+  public:
+    Graph() = default;  // needed for cereal
 
-        Graph(bool checkpoints,
-              std::shared_ptr<thread_pool::ThreadPool> thread_pool = nullptr);
+    Graph(bool checkpoints, std::shared_ptr<thread_pool::ThreadPool> thread_pool = nullptr);
 
-        Graph(const Graph &) = delete;
+    Graph(const Graph &) = delete;
 
-        Graph &operator=(const Graph &) = default;
+    Graph &operator=(const Graph &) = default;
 
-        Graph(Graph &&) = default;
+    Graph(Graph &&) = default;
 
-        Graph &operator=(Graph &&) = default;
+    Graph &operator=(Graph &&) = default;
 
-        ~Graph() = default;
+    ~Graph() = default;
 
-        Graph_Stage stage() const {
-            return stage_;
+    Graph_Stage stage() const {
+      return stage_;
+    }
+
+    void advance_stage() {
+      stage_ = (Graph_Stage) ((int) stage_ + 1);
+    }
+
+    bool use_checkpoints() {
+      return checkpoints_;
+    }
+
+    void DuplicateGraph();
+
+    // ignore nodes that are less than epsilon away from any junction node
+    std::uint32_t CreateUnitigs(std::uint32_t epsilon = 0);
+
+    std::uint32_t CreateUnitigsAlternate(std::uint32_t epsilon = 0);
+
+    void CreateUnitigGraph();
+
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigPairs(bool drop_unpolished = false);
+
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetAssembledData(bool primary = true);
+
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigs(bool drop_unpolished = false);
+
+    // draw with misc/plotter.py
+    void PrintJson(const std::string &path) const;
+
+    // draw with Cytoscape
+    void PrintCsv(const std::string &path) const;
+
+    // draw with Bandage
+    void PrintGfa(const std::string &path) const;
+
+    // print overlaps in PAF file format
+    void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps,
+                       std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, bool print_cigar,
+                       const std::string &path) const;
+
+    // draw unitig graph with Bandage
+    void PrintUnitigGfa(const std::string &path) const;
+
+    // cereal load wrapper
+    void Load();
+
+    // cereal store wrapper
+    void Store() const;
+
+    std::unordered_set<std::uint32_t> FindRemovableEdges(const std::vector<Node *> &path);
+
+    void RemoveEdges(const std::unordered_set<std::uint32_t> &indices, bool remove_nodes = false);
+
+    void RemoveUnitigEdges(const std::unordered_set<std::uint32_t> &indices, bool remove_nodes = false);
+
+    void RemoveDiploidEdges(const std::vector<MarkedEdge> &indices, bool remove_nodes = false);
+
+    void RemoveAlternateEdges(const std::vector<MarkedEdge> &indices, bool remove_nodes = false);
+
+    // label small circular contigs as unitigs
+    std::uint32_t SalvagePlasmids();
+
+    void SalvageHaplotypes();
+
+    void SalvageHaplotypesPrimary();
+
+    void SalvageHaplotypesAlternative();
+
+    std::vector<std::shared_ptr<Node>> nodes_;
+    std::vector<std::shared_ptr<Edge>> edges_;
+
+    std::vector<std::unordered_set<std::uint32_t>> annotations_;
+    std::vector<std::vector<std::uint32_t>> anno_;
+    std::vector<std::unique_ptr<Pile>> piles_;
+
+    std::vector<std::shared_ptr<Node>> unitig_nodes_;
+    std::vector<std::shared_ptr<Edge>> unitig_edges_;
+
+    std::vector<std::shared_ptr<Node>> nodes_alternate_;
+    std::vector<std::shared_ptr<Edge>> edges_alternate_;
+
+  private:
+    friend cereal::access;
+
+    template<class Archive>
+    void save(Archive &archive) const {  // NOLINT
+      std::vector<std::pair<std::uint32_t, std::uint32_t>> connections;
+      for (const auto &it: edges_) {
+        if (it && !it->is_rc()) {
+          connections.emplace_back(it->tail->id, it->head->id);
+        } else {
+          connections.emplace_back();  // dummy
         }
+      }
 
-        void advance_stage() {
-            stage_ = (Graph_Stage) ((int) stage_ + 1);
+      archive(stage_, annotations_, piles_, nodes_, edges_, connections);
+    }
+
+    template<class Archive>
+    void load(Archive &archive) {  // NOLINT
+      std::vector<std::pair<std::uint32_t, std::uint32_t>> connections;
+
+      archive(stage_, annotations_, piles_, nodes_, edges_, connections);
+
+      for (std::uint32_t i = 0; i < nodes_.size(); i += 2) {
+        if (nodes_[i]) {
+          nodes_[i]->pair = nodes_[i + 1].get();
+          nodes_[i + 1]->pair = nodes_[i].get();
         }
+      }
+      for (std::uint32_t i = 0; i < edges_.size(); i += 2) {
+        if (edges_[i]) {
+          edges_[i]->pair = edges_[i + 1].get();
+          edges_[i + 1]->pair = edges_[i].get();
 
-        bool use_checkpoints() {
-            return checkpoints_;
+          edges_[i]->tail = nodes_[connections[i].first].get();
+          edges_[i]->head = nodes_[connections[i].second].get();
+          edges_[i + 1]->head = edges_[i]->tail->pair;
+          edges_[i + 1]->tail = edges_[i]->head->pair;
+
+          edges_[i]->tail->outedges.emplace_back(edges_[i].get());
+          edges_[i]->head->inedges.emplace_back(edges_[i].get());
+          edges_[i + 1]->tail->outedges.emplace_back(edges_[i + 1].get());
+          edges_[i + 1]->head->inedges.emplace_back(edges_[i + 1].get());
         }
+      }
 
-        void DuplicateGraph();
+      Node::num_objects = nodes_.size();
+      Edge::num_objects = edges_.size();
+    }
 
-        // ignore nodes that are less than epsilon away from any junction node
-        std::uint32_t CreateUnitigs(std::uint32_t epsilon = 0);
-
-        std::uint32_t CreateUnitigsAlternate(std::uint32_t epsilon = 0);
-
-        void CreateUnitigGraph();
-
-        std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigPairs(bool drop_unpolished = false);
-
-        std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetAssembledData(bool primary = true);
-
-        std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigs(bool drop_unpolished = false);
-
-        // draw with misc/plotter.py
-        void PrintJson(const std::string &path) const;
-
-        // draw with Cytoscape
-        void PrintCsv(const std::string &path) const;
-
-        // draw with Bandage
-        void PrintGfa(const std::string &path) const;
-
-        // print overlaps in PAF file format
-        void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps,
-                           std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, bool print_cigar,
-                           const std::string &path) const;
-
-        // draw unitig graph with Bandage
-        void PrintUnitigGfa(const std::string &path) const;
-
-        // cereal load wrapper
-        void Load();
-
-        // cereal store wrapper
-        void Store() const;
-
-        std::unordered_set<std::uint32_t> FindRemovableEdges(const std::vector<Node *> &path);
-
-        void RemoveEdges(const std::unordered_set<std::uint32_t> &indices, bool remove_nodes = false);
-
-        void RemoveUnitigEdges(const std::unordered_set<std::uint32_t> &indices, bool remove_nodes = false);
-
-        void RemoveDiploidEdges(const std::vector<MarkedEdge> &indices, bool remove_nodes = false);
-
-        void RemoveAlternateEdges(const std::vector<MarkedEdge> &indices, bool remove_nodes = false);
-
-        // label small circular contigs as unitigs
-        std::uint32_t SalvagePlasmids();
-
-        void SalvageHaplotypes();
-
-        void SalvageHaplotypesPrimary();
-
-        void SalvageHaplotypesAlternative();
-
-        std::vector<std::shared_ptr<Node>> nodes_;
-        std::vector<std::shared_ptr<Edge>> edges_;
-
-        std::vector<std::unordered_set<std::uint32_t>> annotations_;
-        std::vector<std::vector<std::uint32_t>> anno_;
-        std::vector<std::unique_ptr<Pile>> piles_;
-
-        std::vector<std::shared_ptr<Node>> unitig_nodes_;
-        std::vector<std::shared_ptr<Edge>> unitig_edges_;
-
-        std::vector<std::shared_ptr<Node>> nodes_alternate_;
-        std::vector<std::shared_ptr<Edge>> edges_alternate_;
-
-    private:
-        friend cereal::access;
-
-        template<class Archive>
-        void save(Archive &archive) const {  // NOLINT
-            std::vector<std::pair<std::uint32_t, std::uint32_t>> connections;
-            for (const auto &it: edges_) {
-                if (it && !it->is_rc()) {
-                    connections.emplace_back(it->tail->id, it->head->id);
-                } else {
-                    connections.emplace_back();  // dummy
-                }
-            }
-
-            archive(stage_, annotations_, piles_, nodes_, edges_, connections);
-        }
-
-        template<class Archive>
-        void load(Archive &archive) {  // NOLINT
-            std::vector<std::pair<std::uint32_t, std::uint32_t>> connections;
-
-            archive(stage_, annotations_, piles_, nodes_, edges_, connections);
-
-            for (std::uint32_t i = 0; i < nodes_.size(); i += 2) {
-                if (nodes_[i]) {
-                    nodes_[i]->pair = nodes_[i + 1].get();
-                    nodes_[i + 1]->pair = nodes_[i].get();
-                }
-            }
-            for (std::uint32_t i = 0; i < edges_.size(); i += 2) {
-                if (edges_[i]) {
-                    edges_[i]->pair = edges_[i + 1].get();
-                    edges_[i + 1]->pair = edges_[i].get();
-
-                    edges_[i]->tail = nodes_[connections[i].first].get();
-                    edges_[i]->head = nodes_[connections[i].second].get();
-                    edges_[i + 1]->head = edges_[i]->tail->pair;
-                    edges_[i + 1]->tail = edges_[i]->head->pair;
-
-                    edges_[i]->tail->outedges.emplace_back(edges_[i].get());
-                    edges_[i]->head->inedges.emplace_back(edges_[i].get());
-                    edges_[i + 1]->tail->outedges.emplace_back(edges_[i + 1].get());
-                    edges_[i + 1]->head->inedges.emplace_back(edges_[i + 1].get());
-                }
-            }
-
-            Node::num_objects = nodes_.size();
-            Edge::num_objects = edges_.size();
-        }
-
-        Graph_Stage stage_;
-        bool checkpoints_;
-        std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
-    };
+    Graph_Stage stage_;
+    bool checkpoints_;
+    std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
+  };
 
 }  // namespace raven
 
 namespace biosoup {
 
-    template<class Archive>
-    void serialize(Archive &archive, NucleicAcid &sequence) {  // NOLINT
-        archive(
-                sequence.id,
-                sequence.name,
-                sequence.deflated_data,
-                sequence.block_quality,
-                sequence.inflated_len,
-                sequence.is_reverse_complement);
-    }
+  template<class Archive>
+  void serialize(Archive &archive, NucleicAcid &sequence) {  // NOLINT
+    archive(
+        sequence.id,
+        sequence.name,
+        sequence.deflated_data,
+        sequence.block_quality,
+        sequence.inflated_len,
+        sequence.is_reverse_complement);
+  }
 
 }  // namespace biosoup
 

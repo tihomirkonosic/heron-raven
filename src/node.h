@@ -64,14 +64,14 @@ namespace raven {
     template<class Archive>
     void serialize(Archive &archive) {  // NOLINT
       archive(
-        id,
-        sequence,
-        count,
-        is_unitig,
-        is_circular,
-        is_polished,
-        transitive,
-        color);
+          id,
+          sequence,
+          count,
+          is_unitig,
+          is_circular,
+          is_polished,
+          transitive,
+          color);
     }
 
     static std::atomic<std::uint32_t> num_objects;

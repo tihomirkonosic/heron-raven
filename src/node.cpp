@@ -3,43 +3,43 @@
 namespace raven {
 
   Node::Node(const biosoup::NucleicAcid &sequence)
-    : id(num_objects++),
-      sequence(sequence),
-      count(1),
-      is_unitig(),
-      is_circular(),
-      is_polished(),
-      transitive(),
-      inedges(),
-      outedges(),
-      pair(),
-      alternate() {}
+      : id(num_objects++),
+        sequence(sequence),
+        count(1),
+        is_unitig(),
+        is_circular(),
+        is_polished(),
+        transitive(),
+        inedges(),
+        outedges(),
+        pair(),
+        alternate() {}
 
   Node::Node(const biosoup::NucleicAcid &sequence, std::uint32_t id)
-    : id(id),
-      sequence(sequence),
-      count(1),
-      is_unitig(),
-      is_circular(),
-      is_polished(),
-      transitive(),
-      inedges(),
-      outedges(),
-      pair(),
-      alternate() {}
+      : id(id),
+        sequence(sequence),
+        count(1),
+        is_unitig(),
+        is_circular(),
+        is_polished(),
+        transitive(),
+        inedges(),
+        outedges(),
+        pair(),
+        alternate() {}
 
   Node::Node(Node *begin, Node *end)
-    : id(num_objects++),
-      sequence(),
-      count(),
-      is_unitig(),
-      is_circular(begin == end),
-      is_polished(),
-      transitive(),
-      inedges(),
-      outedges(),
-      pair(),
-      alternate() {
+      : id(num_objects++),
+        sequence(),
+        count(),
+        is_unitig(),
+        is_circular(begin == end),
+        is_polished(),
+        transitive(),
+        inedges(),
+        outedges(),
+        pair(),
+        alternate() {
     std::string data{};
 
     auto it = begin;
@@ -58,22 +58,22 @@ namespace raven {
     is_unitig = count > 5 && data.size() > min_unitig_size;
 
     sequence = biosoup::NucleicAcid(
-      (is_unitig ? "Utg" : "Ctg") + std::to_string(id & (~1UL)),
-      data);
+        (is_unitig ? "Utg" : "Ctg") + std::to_string(id & (~1UL)),
+        data);
   }
 
   Node::Node(Node *begin, Node *end, std::uint32_t id)
-    : id(id),
-      sequence(),
-      count(),
-      is_unitig(),
-      is_circular(begin == end),
-      is_polished(),
-      transitive(),
-      inedges(),
-      outedges(),
-      pair(),
-      alternate() {
+      : id(id),
+        sequence(),
+        count(),
+        is_unitig(),
+        is_circular(begin == end),
+        is_polished(),
+        transitive(),
+        inedges(),
+        outedges(),
+        pair(),
+        alternate() {
 
     std::string data{};
 
@@ -93,25 +93,25 @@ namespace raven {
     is_unitig = count > 5 && data.size() > 9999;
 
     sequence = biosoup::NucleicAcid(
-      (is_unitig ? "Utg" : "Ctg") + std::to_string(id & (~1UL)),
-      data);
+        (is_unitig ? "Utg" : "Ctg") + std::to_string(id & (~1UL)),
+        data);
   }
 
   Node::Node(Node *begin, Node *end, bool is_unitig)
-    : id(num_objects++),
-      sequence(),
-      count(),
-      is_unitig(is_unitig),
-      is_circular(false),
-      is_polished(),
-      transitive(),
-      front_inedges(),
-      front_outedges(),
-      back_inedges(),
-      back_outedges(),
-      pair(),
-      unitig_nodes(),
-      alternate() {
+      : id(num_objects++),
+        sequence(),
+        count(),
+        is_unitig(is_unitig),
+        is_circular(false),
+        is_polished(),
+        transitive(),
+        front_inedges(),
+        front_outedges(),
+        back_inedges(),
+        back_outedges(),
+        pair(),
+        unitig_nodes(),
+        alternate() {
 
     std::string data{};
 
@@ -172,23 +172,23 @@ namespace raven {
       };
     };
     sequence = biosoup::NucleicAcid(
-      "Utg" + std::to_string(id & (~1UL)),
-      data);
+        "Utg" + std::to_string(id & (~1UL)),
+        data);
   }
 
   Node::Node(Node *begin, Node *end, bool is_unitig, std::uint32_t id)
-    : id(id),
-      sequence(),
-      count(),
-      is_unitig(is_unitig),
-      is_circular(begin == end),
-      is_polished(),
-      transitive(),
-      inedges(),
-      outedges(),
-      pair(),
-      unitig_nodes(),
-      alternate() {
+      : id(id),
+        sequence(),
+        count(),
+        is_unitig(is_unitig),
+        is_circular(begin == end),
+        is_polished(),
+        transitive(),
+        inedges(),
+        outedges(),
+        pair(),
+        unitig_nodes(),
+        alternate() {
 
     std::string data{};
 
@@ -250,8 +250,8 @@ namespace raven {
       };
     };
     sequence = biosoup::NucleicAcid(
-      "Utg" + std::to_string(id & (~1UL)),
-      data);
+        "Utg" + std::to_string(id & (~1UL)),
+        data);
   }
 
   std::atomic<std::uint32_t> Node::num_objects{0};
