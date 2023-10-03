@@ -20,6 +20,12 @@ namespace {
     {"kmer-len", required_argument, nullptr, 'K'},
     {"window-len", required_argument, nullptr, 'W'},
     {"frequency", required_argument, nullptr, 'F'},
+    {"hpc", no_argument, nullptr, 'H'},
+    {"bandwidth", required_argument, nullptr, 'B'},
+    {"chain_n", required_argument, nullptr, 'C'},
+    {"match_n", required_argument, nullptr, 'M'},
+    {"gap_size", required_argument, nullptr, 'G'},
+    {"error-corrected-reads", required_argument, nullptr, 'E'},
     {"polishing-rounds", required_argument, nullptr, 'p'},
     {"match", required_argument, nullptr, 'm'},
     {"mismatch", required_argument, nullptr, 'n'},
@@ -69,6 +75,24 @@ namespace {
               "    -p, --polishing-rounds <int>\n"
               "      default: 0\n"
               "      number of times racon is invoked\n"
+              "    -H, --hpc\n"
+              "     default: false\n"
+              "     use HPC overlaps\n"
+              "    -B, --bandwidth <int>\n"
+              "      default: 500\n"
+              "      bandwidth\n"
+              "    -C, --chain_n <int>\n"
+              "      default: 4\n"
+              "      chain_n\n"
+              "    -M, --match_n <int>\n"
+              "      default: 100\n"
+              "      match_n\n"
+              "    -G, --gap_size <int>\n"
+              "      default: 10000\n"
+              "      gap_size\n"
+              "    -E, --error-corrected-reads <string>\n"
+              "      default: \"\"\n"
+              "      path to error corrected reads\n"
               "    -m, --match <int>\n"
               "      default: 3\n"
               "      score for matching bases\n"
@@ -170,6 +194,9 @@ int main(int argc, char** argv) {
   std::uint16_t match_n = 100;
   std::uint16_t gap_size = 10000;
   double freq = 0.001;
+  bool hpc = false;
+
+  std::string error_corrected_reads = "";
 
   std::int32_t num_polishing_rounds = 0;
   std::int8_t m = 3;
@@ -205,7 +232,13 @@ int main(int argc, char** argv) {
     switch (arg) {
       case 'K': kmer_len = std::atoi(optarg); break;
       case 'W': window_len = std::atoi(optarg); break;
-      case 'F': freq = std::atof(optarg); break;      
+      case 'F': freq = std::atof(optarg); break;
+      case 'H': hpc = true; break;   
+      case 'B': bandwidth = std::atoi(optarg); break;
+      case 'C': chain_n = std::atoi(optarg); break;
+      case 'M': match_n = std::atoi(optarg); break;
+      case 'G': gap_size = std::atoi(optarg); break;
+      case 'E': error_corrected_reads = optarg; break;
       case 's': split = std::atoi(optarg); break;
       case 'p': num_polishing_rounds = atoi(optarg); break;
       case 'm': m = atoi(optarg); break;
@@ -330,7 +363,7 @@ int main(int argc, char** argv) {
     timer.Start();
   };
 
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, paf, valid_region_size);
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
 
   if(ul_read_path.empty()){
     graph.Assemble();

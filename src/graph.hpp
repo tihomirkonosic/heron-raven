@@ -81,6 +81,7 @@ class Graph {
       std::uint16_t match_n = 100,
       std::uint16_t gap_size = 10000,
       double freq = 0.001,
+      bool hpc,
       bool paf = false,
       std::uint16_t valid_region_treshold = 4);
 

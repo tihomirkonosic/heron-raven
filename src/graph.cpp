@@ -339,6 +339,7 @@ void Graph::Construct(
     std::uint16_t match_n,
     std::uint16_t gap_size,
     double freq,
+    bool hpc,
     bool paf,
     std::uint16_t valid_region_treshold) {
   disagreement_ = disagreement;
