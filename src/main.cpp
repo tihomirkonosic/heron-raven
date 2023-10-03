@@ -22,9 +22,6 @@ namespace {
       {"window-len", required_argument, nullptr, 'W'},
       {"frequency", required_argument, nullptr, 'F'},
       {"polishing-rounds", required_argument, nullptr, 'p'},
-      {"match", required_argument, nullptr, 'm'},
-      {"mismatch", required_argument, nullptr, 'n'},
-      {"gap", required_argument, nullptr, 'g'},
       {"split", required_argument, nullptr, 's'},
       {"disagreement", required_argument, nullptr, 'D'},
       {"graphical-fragment-assembly", required_argument, nullptr, 'f'},
@@ -42,7 +39,7 @@ namespace {
       {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "K:W:F:p:m:n:g:s:D:f:rdt:vho:u:x:U:PR:";
+  std::string optstr = "K:W:F:p:s:D:f:rdt:vho:u:x:U:PR:";
 
   void Help() {
     std::cout <<
@@ -65,15 +62,6 @@ namespace {
               "    -p, --polishing-rounds <int>\n"
               "      default: 0\n"
               "      number of times racon is invoked\n"
-              "    -m, --match <int>\n"
-              "      default: 3\n"
-              "      score for matching bases\n"
-              "    -n, --mismatch <int>\n"
-              "      default: -5\n"
-              "      score for mismatching bases\n"
-              "    -g, --gap <int>\n"
-              "      default: -4\n"
-              "      gap penalty (must be negative)\n"
               "    -s, --split <int>\n"
               "      default: 0\n"
               "      graph coloring\n"
@@ -123,9 +111,6 @@ int main(int argc, char **argv) {
   double freq = 0.001;
 
   std::int32_t num_polishing_rounds = 0;
-  std::int8_t m = 3;
-  std::int8_t n = -5;
-  std::int8_t g = -4;
 
   std::string ul_read_path;
 
@@ -144,10 +129,6 @@ int main(int argc, char **argv) {
   std::uint16_t valid_region_size = 4;
   bool paf = false;
 
-  std::uint32_t cuda_poa_batches = 0;
-  std::uint32_t cuda_alignment_batches = 0;
-  bool cuda_banded_alignment = false;
-
   int arg;
   while ((arg = getopt_long(argc, argv, optstr.c_str(), options, nullptr)) != -1) {  // NOLINT
     switch (arg) {
@@ -165,15 +146,6 @@ int main(int argc, char **argv) {
         break;
       case 'p':
         num_polishing_rounds = atoi(optarg);
-        break;
-      case 'm':
-        m = atoi(optarg);
-        break;
-      case 'n':
-        n = atoi(optarg);
-        break;
-      case 'g':
-        g = atoi(optarg);
         break;
       case 'D':
         disagreement = std::atof(optarg);
