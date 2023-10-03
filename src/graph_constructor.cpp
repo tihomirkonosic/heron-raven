@@ -21,6 +21,7 @@ namespace raven {
       double disagreement,
       unsigned split,
       std::size_t kMaxNumOverlaps,
+			std::uint8_t ploidy,
       std::uint8_t kmer_len,
       std::uint8_t window_len,
       std::uint16_t bandwidth,
@@ -28,6 +29,7 @@ namespace raven {
       std::uint16_t match_n,
       std::uint16_t gap_size,
       double freq,
+			bool hpc,
       bool paf,
       std::uint16_t valid_region_treshold) {
 
@@ -568,7 +570,9 @@ namespace raven {
 
                   };
 
-                  call_snps(i, ovlps_final);
+									if(ploidy >= 2){
+										call_snps(i, ovlps_final);
+									}
                   return ovlps_final;
                 }
                 return ovlps;
@@ -636,7 +640,7 @@ namespace raven {
         j = i + 1;
       }
 
-      if (print_snp_data) {
+      if (print_snp_data && ploidy >= 2) {
         std::ofstream outdata;
         outdata.open("snp_annotations.anno");
 
