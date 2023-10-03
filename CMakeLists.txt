@@ -21,6 +21,23 @@ if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 endif ()
 option(raven_build_tests "Build unit tests" ${raven_main_project})
 
+find_package(biosoup 0.10.0 QUIET)
+if (NOT biosoup_FOUND)
+  FetchContent_Declare(
+    biosoup
+    GIT_REPOSITORY https://github.com/rvaser/biosoup
+    GIT_TAG 0.10.0)
+
+  FetchContent_GetProperties(biosoup)
+  if (NOT biosoup_POPULATED)
+    FetchContent_Populate(biosoup)
+    add_subdirectory(
+      ${biosoup_SOURCE_DIR}
+      ${biosoup_BINARY_DIR}
+      EXCLUDE_FROM_ALL)
+  endif ()
+endif ()
+
 find_package(bioparser 3.0.13 QUIET)
 if (NOT bioparser_FOUND)
   FetchContent_Declare(
@@ -56,19 +73,36 @@ if (NOT cereal_FOUND)
   endif ()
 endif ()
 
-find_package(racon 3.0.1 QUIET)
-if (NOT racon_FOUND)
+find_package(ram 1.0.0 QUIET)
+if (NOT ram_FOUND)
   FetchContent_Declare(
-    racon
-    GIT_REPOSITORY https://github.com/lbcb-sci/racon
-    GIT_TAG library)
+    ram
+    GIT_REPOSITORY https://github.com/kocijan/ram
+    GIT_TAG hpc)
 
-  FetchContent_GetProperties(racon)
-  if (NOT racon_POPULATED)
-    FetchContent_Populate(racon)
+  FetchContent_GetProperties(ram)
+  if (NOT ram_POPULATED)
+    FetchContent_Populate(ram)
     add_subdirectory(
-      ${racon_SOURCE_DIR}
-      ${racon_BINARY_DIR}
+      ${ram_SOURCE_DIR}
+      ${ram_BINARY_DIR}
+      EXCLUDE_FROM_ALL)
+  endif ()
+endif ()
+
+find_package(edlib 1.2.7 QUIET)
+if (NOT edlib_FOUND)
+  FetchContent_Declare(
+    edlib
+    GIT_REPOSITORY https://github.com/martinsos/edlib
+    GIT_TAG v1.2.7)
+
+  FetchContent_GetProperties(edlib)
+  if (NOT edlib_POPULATED)
+    FetchContent_Populate(edlib)
+    add_subdirectory(
+      ${edlib_SOURCE_DIR}
+      ${edlib_BINARY_DIR}
       EXCLUDE_FROM_ALL)
   endif ()
 endif ()
@@ -101,12 +135,14 @@ add_library(raven
   src/parser.cpp
   src/graph_constructor.cpp
   src/graph_assembler.cpp
-  src/graph_polisher.cpp)
+)
 
 target_link_libraries(raven
   cereal::cereal
-  racon::racon
-  bioparser::bioparser)
+  biosoup::biosoup
+  bioparser::bioparser
+  ram::ram
+  edlib::edlib)
 
 target_include_directories(raven PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
@@ -117,9 +153,6 @@ add_executable(raven_exe
 target_link_libraries(raven_exe
   raven)
 
-if (racon_enable_cuda)
-  target_compile_definitions(raven_exe PRIVATE CUDA_ENABLED)
-endif ()
 
 target_compile_definitions(raven_exe PRIVATE VERSION="${PROJECT_VERSION}")
 set_property(TARGET raven_exe PROPERTY OUTPUT_NAME raven)

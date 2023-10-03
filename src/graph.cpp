@@ -9,7 +9,6 @@
 
 #include "cereal/archives/binary.hpp"
 #include "cereal/archives/json.hpp"
-#include "racon/polisher.hpp"
 #include "marked_edge.h"
 
 namespace raven {

@@ -11,7 +11,6 @@
 #include "graph.hpp"
 #include "graph_constructor.h"
 #include "graph_assembler.h"
-#include "graph_polisher.h"
 #include "parser.h"
 
 std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};
@@ -26,11 +25,6 @@ namespace {
       {"match", required_argument, nullptr, 'm'},
       {"mismatch", required_argument, nullptr, 'n'},
       {"gap", required_argument, nullptr, 'g'},
-#ifdef CUDA_ENABLED
-      {"cuda-poa-batches", optional_argument, nullptr, 'c'},
-      {"cuda-banded-alignment", no_argument, nullptr, 'b'},
-      {"cuda-alignment-batches", required_argument, nullptr, 'a'},
-#endif
       {"split", required_argument, nullptr, 's'},
       {"disagreement", required_argument, nullptr, 'D'},
       {"graphical-fragment-assembly", required_argument, nullptr, 'f'},
@@ -80,17 +74,6 @@ namespace {
               "    -g, --gap <int>\n"
               "      default: -4\n"
               "      gap penalty (must be negative)\n"
-              #ifdef CUDA_ENABLED
-              "    -c, --cuda-poa-batches <int>\n"
-"      default: 0\n"
-"      number of batches for CUDA accelerated polishing\n"
-"    -b, --cuda-banded-alignment\n"
-"      use banding approximation for polishing on GPU\n"
-"      (only applicable when -c is used)\n"
-"    -a, --cuda-alignment-batches <int>\n"
-"      default: 0\n"
-"      number of batches for CUDA accelerated alignment\n"
-              #endif
               "    -s, --split <int>\n"
               "      default: 0\n"
               "      graph coloring\n"
@@ -165,10 +148,6 @@ int main(int argc, char **argv) {
   std::uint32_t cuda_alignment_batches = 0;
   bool cuda_banded_alignment = false;
 
-#ifdef CUDA_ENABLED
-  optstr += "c:ba:";
-#endif
-
   int arg;
   while ((arg = getopt_long(argc, argv, optstr.c_str(), options, nullptr)) != -1) {  // NOLINT
     switch (arg) {
@@ -196,25 +175,6 @@ int main(int argc, char **argv) {
       case 'g':
         g = atoi(optarg);
         break;
-#ifdef CUDA_ENABLED
-        case 'c':
-          cuda_poa_batches = 1;
-          // next text entry is not an option, assuming it's the arg for option c
-          if (optarg == NULL && argv[optind] != NULL && argv[optind][0] != '-') {
-          cuda_poa_batches = atoi(argv[optind++]);
-          }
-          // optional argument provided in the ususal way
-          if (optarg != NULL) {
-          cuda_poa_batches = atoi(optarg);
-          }
-          break;
-        case 'b':
-          cuda_banded_alignment = true;
-          break;
-        case 'a':
-          cuda_alignment_batches = atoi(optarg);
-          break;
-#endif
       case 'D':
         disagreement = std::atof(optarg);
         break;
@@ -358,10 +318,6 @@ int main(int argc, char **argv) {
   } else {
     graph_assembler.UlAssemble(ul_sequences);
   }
-
-  raven::Graph_Polisher graph_polisher{graph, thread_pool};
-  graph_polisher.Polish(sequences, m, n, g, cuda_poa_batches, cuda_banded_alignment, cuda_alignment_batches,
-                        num_polishing_rounds);
 
   graph.PrintGfa(gfa_path);
 
