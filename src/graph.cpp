@@ -332,6 +332,7 @@ void Graph::Construct(
     double disagreement,
     unsigned split,
     std::size_t kMaxNumOverlaps,
+    std::uint8_t ploidy,
     std::uint8_t kmer_len,
     std::uint8_t window_len,
     std::uint16_t bandwidth,
@@ -859,8 +860,9 @@ void Graph::Construct(
                   ovlps_final.emplace_back(ovlp_tmp);
                 
                 };
-
-                call_snps(i, ovlps_final);
+                if(ploidy >= 2){
+                  call_snps(i, ovlps_final);
+                }
                 return ovlps_final;
               }
               return ovlps;
@@ -927,7 +929,7 @@ void Graph::Construct(
       j = i + 1;
     }
 
-    if(print_snp_data){
+    if(print_snp_data && ploidy >= 2){
       std::ofstream outdata;
       outdata.open("snp_annotations.anno");
 
