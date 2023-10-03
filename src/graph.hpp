@@ -74,6 +74,7 @@ class Graph {
       double disagreement = 0.1,
       unsigned split = 0,
       std::size_t kMaxNumOverlaps = 16,
+      std::uint8_t ploidy = 2,
       std::uint8_t kmer_len = 41,
       std::uint8_t window_len = 41,
       std::uint16_t bandwidth = 500,
@@ -81,7 +82,7 @@ class Graph {
       std::uint16_t match_n = 100,
       std::uint16_t gap_size = 10000,
       double freq = 0.001,
-      bool hpc,
+      bool hpc = false,
       bool paf = false,
       std::uint16_t valid_region_treshold = 4);
 

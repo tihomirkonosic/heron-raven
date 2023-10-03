@@ -186,6 +186,7 @@ std::unique_ptr<bioparser::Parser<biosoup::NucleicAcid>> CreateParser(
 int main(int argc, char** argv) {
   unsigned split = 0;
 
+  std::uint8_t ploidy = 2;
 
   std::uint8_t kmer_len = 31;
   std::uint8_t window_len = 17;
@@ -241,6 +242,7 @@ int main(int argc, char** argv) {
       case 'E': error_corrected_reads = optarg; break;
       case 's': split = std::atoi(optarg); break;
       case 'p': num_polishing_rounds = atoi(optarg); break;
+      case 'y': ploidy = std::atoi(optarg); break;
       case 'm': m = atoi(optarg); break;
       case 'n': n = atoi(optarg); break;
       case 'g': g = atoi(optarg); break;
@@ -362,8 +364,8 @@ int main(int argc, char** argv) {
               
     timer.Start();
   };
-
-  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
+  std::cout << "Constructing graph with params: kmer_size:" << kmer_len  << " winodw_size:" << window_len << " " << std::endl;
+  graph.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
 
   if(ul_read_path.empty()){
     graph.Assemble();
