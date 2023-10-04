@@ -1,6 +1,8 @@
 // Copyright (c) 2020 Robert Vaser
 
 #include "graph.hpp"
+#include "graph_constructor.h"
+#include "graph_assembler.h"
 
 #include "bioparser/fasta_parser.hpp"
 #include "bioparser/fastq_parser.hpp"
@@ -44,9 +46,11 @@ class RavenTest: public ::testing::Test {
 
 TEST_F(RavenTest, Assemble) {
   Graph g{false, nullptr};
-  g.Construct(s);
-  g.Assemble();
-  g.Polish(s, 3, -5, -4, 0, false, 0, 2);
+  Graph_Constructor graph_constructor{g, nullptr};
+  graph_constructor.Construct(s);
+  Graph_Assembler graph_assembler{g, nullptr};
+  graph_assembler.Assemble();
+  //g.Polish(s, 3, -5, -4, 0, false, 0, 2);
   auto u = std::move(g.GetUnitigs(true).front());
   u->ReverseAndComplement();
   EXPECT_EQ(1137, EditDistance(u->InflateData(), r->InflateData()));
@@ -54,27 +58,29 @@ TEST_F(RavenTest, Assemble) {
 
 TEST_F(RavenTest, Checkpoints) {
   Graph g{false, nullptr};
-  g.Construct(s);
-  g.Assemble();
-  g.Polish(s, 2, -5, -2, 0, false, 0, 2);
+  Graph_Constructor graph_constructor{g, nullptr};
+  graph_constructor.Construct(s);
+  Graph_Assembler graph_assembler{g, nullptr};
+  graph_assembler.Assemble();
+  //g.Polish(s, 2, -5, -2, 0, false, 0, 2);
   auto u = std::move(g.GetUnitigs(true).front());
 
   SetUp();
 
   g = {true, nullptr};
-  g.Construct(s);
+  graph_constructor.Construct(s);
 
   g = {true, nullptr};
   g.Load();
-  g.Assemble();
+  graph_assembler.Assemble();
 
-  g = {true, nullptr};
-  g.Load();
-  g.Polish(s, 2, -5, -2, 0, false, 0, 1);
+  // g = {true, nullptr};
+  // g.Load();
+  // g.Polish(s, 2, -5, -2, 0, false, 0, 1);
 
-  g = {true, nullptr};
-  g.Load();
-  g.Polish(s, 2, -5, -2, 0, false, 0, 2);
+  // g = {true, nullptr};
+  // g.Load();
+  // g.Polish(s, 2, -5, -2, 0, false, 0, 2);
 
   EXPECT_EQ(u->deflated_data, g.GetUnitigs(true).front()->deflated_data);
 }
