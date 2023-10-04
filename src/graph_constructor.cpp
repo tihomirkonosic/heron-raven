@@ -534,7 +534,7 @@ namespace raven {
           thread_futures.emplace_back(thread_pool_->Submit(
               [&](std::uint32_t i) -> std::vector<biosoup::Overlap> { // map sequences and fill out the potential snp list
                 std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
-                                                                           true);
+                                                                           true, hpc);
                 if (!ovlps.empty()) {
                   std::vector<biosoup::Overlap> ovlps_final;
 
@@ -954,6 +954,7 @@ namespace raven {
                     true,  // avoid equal
                     true,  // avoid symmetric
                     false,  // minhash
+                    hpc,
                     &filtered);
                 graph_.piles_[sequences[i]->id]->AddKmers(filtered, kmer_len, sequences[i]); // NOLINT
 

@@ -78,7 +78,7 @@ if (NOT ram_FOUND)
   FetchContent_Declare(
     ram
     GIT_REPOSITORY https://github.com/kocijan/ram
-    GIT_TAG hpc)
+    GIT_TAG kocijan/hpc)
 
   FetchContent_GetProperties(ram)
   if (NOT ram_POPULATED)
