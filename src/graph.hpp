@@ -9,6 +9,7 @@
 #include <vector>
 #include <unordered_set>
 #include <utility>
+#include <sstream>
 
 #include <iostream>
 
@@ -104,6 +105,9 @@ namespace raven {
 
     // cereal load wrapper
     void Load();
+
+    //
+    void LoadFromGfa(const std::string &nput_gfa_path);
 
     // cereal store wrapper
     void Store() const;

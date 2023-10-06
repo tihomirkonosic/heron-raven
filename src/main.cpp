@@ -39,13 +39,15 @@ namespace {
       {"output", required_argument, nullptr, 'o'},
       {"ultralong-phasing", required_argument, nullptr, 'u'},
       {"kMaxNumOverlaps", required_argument, nullptr, 'x'},
+      {"ploidy", required_argument, nullptr, 'y'},
       {"min-unitig-size", required_argument, nullptr, 'U'},
       {"paf", no_argument, nullptr, 'P'},
       {"valid-region", required_argument, nullptr, 'R'},
+      {"input", required_argument, nullptr, 'g'},
       {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "K:W:F:p:s:D:f:rdt:vho:u:x:U:PR:";
+  std::string optstr = "K:W:F:Hp:s:D:f:rdt:vho:u:x:U:PR:g:";
 
   void Help() {
     std::cout <<
@@ -118,7 +120,9 @@ namespace {
               "    -R --valid-region <int>\n"
               "      default: 4\n"
               "      overlap valid region size\n"
-              "      prints the usage\n";
+              "      prints the usage\n"
+              "    -g, --graph-input <string>\n"
+              "      input graph path\n";
   }
 
 }  // namespace
@@ -145,6 +149,8 @@ int main(int argc, char **argv) {
 
   double disagreement = 0.1;
   std::string gfa_path = "";
+  std::string input_gfa_path = "";
+  bool skip_contruction = false;
   bool resume = false;
   bool checkpoints = true;
 
@@ -223,6 +229,10 @@ int main(int argc, char **argv) {
       case 'R':
         valid_region_size = std::atoi(optarg);
         break;
+      case 'g':
+        input_gfa_path = optarg;
+        skip_contruction = true;
+        break;
       default:
         return 1;
     }
@@ -233,7 +243,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  if (optind >= argc) {
+  if (optind >= argc && !skip_contruction) {
     std::cerr << "[raven::] error: missing input file!" << std::endl;
     return 1;
   }
@@ -246,6 +256,9 @@ int main(int argc, char **argv) {
   auto thread_pool = std::make_shared<thread_pool::ThreadPool>(num_threads);
 
   raven::Graph graph{checkpoints};
+
+
+
 
   if (resume) {
     try {
@@ -265,11 +278,10 @@ int main(int argc, char **argv) {
   raven::Parser parser;
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> sequences;
 
-  if (graph.stage() == raven::Graph_Stage::Construct_Graph
+  if ((graph.stage() == raven::Graph_Stage::Construct_Graph
       || graph.stage() == raven::Graph_Stage::Construct_Graph_2
-      || num_polishing_rounds > 2) {
+      || num_polishing_rounds > 2) && !skip_contruction) {
     try {
-
       auto sparser = parser.CreateParser(argv[optind]);
       if (sparser == nullptr) {
         return 1;
@@ -286,15 +298,24 @@ int main(int argc, char **argv) {
     }
 
     std::cerr << "[raven::] loaded " << sequences.size() << " sequences "
-              << std::fixed << timer.Stop() << "s"
-              << std::endl;
-
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+    } else {
+      std::cerr << "[raven::] skipped sequence loading" << std::endl;
+    }
     timer.Start();
+
+
+  if (!skip_contruction){
+      raven::Graph_Constructor graph_constructor{graph, thread_pool};
+      graph_constructor.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
+  } else {
+      graph.LoadFromGfa(input_gfa_path);
   }
 
+  raven::Graph_Assembler graph_assembler{graph, thread_pool};
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
-  if (!ul_read_path.empty()) {
-
+  if (!ul_read_path.empty()){
     try {
       auto ul_sequence_parser = parser.CreateParser(ul_read_path);
       ul_sequences = ul_sequence_parser->Parse(-1);
@@ -303,26 +324,20 @@ int main(int argc, char **argv) {
     }
 
     if (ul_sequences.empty()) {
-      std::cerr << "[raven::] error: ul read path set but the file appears empty" << std::endl;
+      std::cerr << "[raven::] error: ul read path set but the file appears empty\n" 
+                << "[raven::] reverting to no ul assembly"<< std::endl;
+    } else{
+      std::cerr << "[raven::] loaded " << ul_sequences.size() << " ul sequences "
+                << std::fixed << timer.Stop() << "s"
+                << std::endl;
     }
+  }
 
-    std::cerr << "[raven::] loaded " << ul_sequences.size() << " ul sequences "
-              << std::fixed << timer.Stop() << "s"
-              << std::endl;
-
-    timer.Start();
-  };
-
-  raven::Graph_Constructor graph_constructor{graph, thread_pool};
-  std::cout << "Constructing graph with params: kmer_size:" << kmer_len  << " winodw_size:" << window_len << " " << std::endl;
-	graph_constructor.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
-
-  raven::Graph_Assembler graph_assembler{graph, thread_pool};
-
-  if (ul_read_path.empty()) {
+  if (ul_sequences.empty()) {
     graph_assembler.Assemble();
     graph_assembler.AssembleDiploids();
   } else {
+    timer.Start();
     graph_assembler.UlAssemble(ul_sequences);
   }
 
@@ -334,7 +349,7 @@ int main(int argc, char **argv) {
       std::cout << ">" << it->name << std::endl;
       std::cout << it->InflateData() << std::endl;
     }
-  } else {
+  } else if(ploidy >= 2){
     // output to file
     std::filesystem::path root_path(output_path);
     std::filesystem::path noext("");
@@ -368,6 +383,25 @@ int main(int argc, char **argv) {
 
     outfile1.close();
     outfile2.close();
+  }
+  else if(ploidy == 1){
+    std::filesystem::path root_path(output_path);
+    std::filesystem::path noext("");
+    root_path.replace_extension(noext);
+    std::filesystem::path path1 = root_path;
+    std::ofstream outfile1;
+
+    if (!outfile1.is_open()) {
+      std::cerr << "[raven::] error: cannot open file" << path1 << std::endl;
+      return 1;
+    }
+
+    for (const auto &it: graph.GetAssembledData(true)) {
+      outfile1 << ">" << it->name << std::endl;
+      outfile1 << it->InflateData() << std::endl;
+    }
+
+    outfile1.close();
   }
 
   timer.Stop();

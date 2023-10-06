@@ -34,6 +34,7 @@ namespace raven {
         bool paf = false,
         std::uint16_t valid_region_treshold = 4);
 
+    void ConstructFromGFA(std::string input_gfa_path);
   private:
     Graph &graph_;
     std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
