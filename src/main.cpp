@@ -305,12 +305,11 @@ int main(int argc, char **argv) {
     }
     timer.Start();
 
-
+  raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!skip_contruction){
-      raven::Graph_Constructor graph_constructor{graph, thread_pool};
       graph_constructor.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
   } else {
-      graph.LoadFromGfa(input_gfa_path);
+      graph_constructor.LoadFromGfa(input_gfa_path);
   }
 
   raven::Graph_Assembler graph_assembler{graph, thread_pool};

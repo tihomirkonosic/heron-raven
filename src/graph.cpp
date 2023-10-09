@@ -764,56 +764,6 @@ namespace raven {
     }
   }
 
-  void Graph::LoadFromGfa(const std::string &gfa_path){
-    try {
-        std::string gfa_path_without_leading_whitespace;
-        if (!gfa_path.empty()) {
-            gfa_path_without_leading_whitespace = gfa_path.substr(1);
-        }
-        std::ifstream file(gfa_path_without_leading_whitespace);
-
-        if (!file.is_open()) {
-            throw std::runtime_error("Error opening file: " + gfa_path_without_leading_whitespace);
-        }
-
-        std::string line;
-        while (std::getline(file, line)) {
-            // Process each line here
-            std::string single_line = line;
-            std::istringstream iss(single_line);
-
-            std::string item;
-            std::string first_item;
-            bool is_first = true;
-            while (std::getline(iss, item, '\t')) {
-                if (is_first) {
-                    first_item = item;
-                    is_first = false;
-                    continue;
-                }
-                if(first_item == "S"){
-                  
-                }else if(first_item  == "A"){
-
-                } else if(first_item == "L"){
-
-                }
-            }
-            //std::cout << line << std::endl;
-        }
-
-        if (file.eof()) {
-            // File has been read successfully
-            file.close();
-            std::cout << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path_without_leading_whitespace << std::endl;
-        } else {
-            throw std::runtime_error("Error reading file: " + gfa_path_without_leading_whitespace);
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << std::endl;
-    }
-  }
-
   std::unordered_set<std::uint32_t> Graph::FindRemovableEdges(const std::vector<Node *> &path) {
     if (path.empty()) {
       return std::unordered_set<std::uint32_t>{};

@@ -107,7 +107,7 @@ namespace raven {
     void Load();
 
     //
-    void LoadFromGfa(const std::string &nput_gfa_path);
+    //void LoadFromGfa(const std::string &nput_gfa_path);
 
     // cereal store wrapper
     void Store() const;

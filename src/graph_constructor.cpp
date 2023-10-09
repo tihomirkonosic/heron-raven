@@ -1280,5 +1280,169 @@ namespace raven {
               << std::fixed << timer.elapsed_time() << "s"
               << std::endl;
   }
+
+
+  void Graph_Constructor::LoadFromGfa(const std::string &gfa_path){
+    try {
+        std::string gfa_path_without_leading_whitespace;
+        if (!gfa_path.empty()) {
+            gfa_path_without_leading_whitespace = gfa_path.substr(1);
+        }
+        std::ifstream file(gfa_path_without_leading_whitespace);
+
+        if (!file.is_open()) {
+            throw std::runtime_error("Error opening file: " + gfa_path_without_leading_whitespace);
+        }
+
+        std::string line;
+        Node::num_objects = 0;
+        Edge::num_objects = 0;
+        std::map<std::string, std::shared_ptr<Node>> sequence_to_node;
+        
+        while (std::getline(file, line)) {
+          // Process each line here
+          std::string single_line = line;
+          std::istringstream iss(single_line);
+
+          std::string item;
+          std::string first_item;
+          bool is_first = true;
+          std::uint8_t counter = 0;
+          std::uint32_t sequence_counter = 0;
+          std::string seq_name;
+          std::string nuc_sequence;
+
+          while (std::getline(iss, item, '\t')) {
+              if (counter == 0) {
+                  first_item = item;
+                  if(first_item == "S"){
+                    sequence_counter++;
+                    counter++;
+                    continue;
+                  }else{
+                    break;
+                  }
+              }
+
+              if(first_item == "S"){
+                if(counter == 1){
+                  seq_name = item;
+                } else if(counter == 2){
+                  nuc_sequence = item;
+              
+                }
+              }
+              counter++;
+          }
+          if(first_item == "S"){
+            auto sequence = biosoup::NucleicAcid{
+              seq_name,
+              nuc_sequence
+            };
+            sequence.id = sequence_counter;
+
+            auto node = std::make_shared<Node>(sequence);
+            sequence.ReverseAndComplement();
+            graph_.nodes_.emplace_back(node);
+            graph_.nodes_.emplace_back(std::make_shared<Node>(sequence));
+            node->pair = graph_.nodes_.back().get();
+            node->pair->pair = node.get();        
+            sequence_to_node.emplace(seq_name, node);
+          }
+        }
+        if(file.eof()){
+          std::cout << "[raven::Graph::LoadFromGfa] loaded sequences from: " << gfa_path_without_leading_whitespace << std::endl; 
+        }
+        //file.seekg(0, file.beg);
+
+        std::ifstream file2(gfa_path_without_leading_whitespace);
+        
+        while (std::getline(file2, line)) {
+          // Process each line here
+          std::string single_line = line;
+          std::istringstream iss(single_line);
+
+          std::string item;
+          std::string first_item;
+          bool is_first = true;
+          std::uint8_t counter = 0;
+          std::uint32_t sequence_counter = 0;
+          std::string seq_name;
+          std::string nuc_sequence;
+          std::string tail_node_name;
+          std::string head_node_name;
+
+          bool tail_node_strand;
+          bool head_node_strand;
+
+          std::string edge_length;
+          std::string item2;
+          std::string ol_length;
+
+          while (std::getline(iss, item, '\t')) {
+            if (counter == 0) {
+                first_item = item;
+                if(first_item == "L"){
+                  sequence_counter++;
+                  counter++;
+                  continue;
+                } else {
+                  break;
+                }
+            }
+            if(first_item == "L"){
+              if(counter == 1){
+                tail_node_name = item;
+              }else if(counter == 2){
+                tail_node_strand = item == "+" ? true : false;
+              }else if(counter == 3){
+                head_node_name = item;
+              }else if(counter == 4){
+                head_node_strand = item == "+" ? true : false;
+              }else if(counter == 5){
+                std::stringstream ss(item);
+                while(std::getline(ss, item2 , 'M')){
+                  ol_length = item2;
+                }
+              }else if(counter == 6){
+                std::uint8_t mini_counter = 0;
+                std::stringstream ss(item);
+                while(std::getline(ss, item2 , ':')){
+                  if(mini_counter == 2) edge_length = item2;
+                  mini_counter++;
+                }
+              }
+            }
+            counter++;
+          }
+          if(first_item == "L"){
+            
+            auto tail_node = tail_node_strand ? sequence_to_node[tail_node_name].get() : sequence_to_node[tail_node_name]->pair;
+            auto head_node = head_node_strand ? sequence_to_node[head_node_name].get() : sequence_to_node[head_node_name]->pair;
+
+            auto length = std::stoi(edge_length);
+            auto length_pair = head_node->sequence.inflated_len - std::stoi(ol_length);
+
+            auto edge = std::make_shared<Edge>(tail_node, head_node, length);
+            graph_.edges_.emplace_back(edge);
+            graph_.edges_.emplace_back(std::make_shared<Edge>(head_node->pair, tail_node->pair, length_pair));  // NOLINT
+            edge->pair = graph_.edges_.back().get();
+            edge->pair->pair = edge.get();
+            
+          }
+        }
+          //std::cout << line << std::endl;
+        file2.close();
+      if (file.eof()) {
+          // File has been read successfully
+          file.close();
+          std::cout << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path_without_leading_whitespace << std::endl;
+      } else {
+          throw std::runtime_error("Error reading file: " + gfa_path_without_leading_whitespace);
+      }
+    } catch (const std::exception& e) {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+  };
   // NOLINT
 } // raven
