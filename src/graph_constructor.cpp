@@ -1351,7 +1351,7 @@ namespace raven {
           }
         }
         if(file.eof()){
-          std::cout << "[raven::Graph::LoadFromGfa] loaded sequences from: " << gfa_path_without_leading_whitespace << std::endl; 
+          std::cerr << "[raven::Graph::LoadFromGfa] loaded sequences from: " << gfa_path_without_leading_whitespace << std::endl; 
         }
         //file.seekg(0, file.beg);
 
@@ -1436,12 +1436,15 @@ namespace raven {
       if (file.eof()) {
           // File has been read successfully
           file.close();
-          std::cout << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path_without_leading_whitespace << std::endl;
+          std::cerr << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path_without_leading_whitespace << std::endl;
       } else {
           throw std::runtime_error("Error reading file: " + gfa_path_without_leading_whitespace);
       }
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
+    }
+    while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
+      graph_.advance_stage();
     }
   };
   // NOLINT

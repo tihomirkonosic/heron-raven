@@ -643,12 +643,15 @@ namespace raven {
 
     std::ofstream os(path);
     for (const auto &it: nodes_) {
-      if ((it == nullptr) || it->is_rc() ||
-          (it->count == 1 && it->outdegree() == 0 && it->indegree() == 0)) {
+      if ((it == nullptr) || it->is_rc()){
         continue;
-      }
+        }
+      // if ((it == nullptr) || it->is_rc() ||
+      //     (it->count == 1 && it->outdegree() == 0 && it->indegree() == 0)) {
+      //   continue;
+      // }
       os << "S\t" << it->sequence.name
-         << "\t" << "*"  // it->sequence.InflateData()
+         << "\t" << it->sequence.InflateData()
          << "\tLN:i:" << it->sequence.inflated_len
          << "\tRC:i:" << it->count
          << "\tCL:z:" << (it->color ? "blue" : "orange")

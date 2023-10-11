@@ -312,6 +312,7 @@ int main(int argc, char **argv) {
       graph_constructor.LoadFromGfa(input_gfa_path);
   }
 
+  graph.PrintGfa("post_construction.gfa");
   raven::Graph_Assembler graph_assembler{graph, thread_pool};
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
   if (!ul_read_path.empty()){
@@ -334,6 +335,7 @@ int main(int argc, char **argv) {
 
   if (ul_sequences.empty()) {
     graph_assembler.Assemble();
+    graph.PrintGfa("post_cleaning.gfa");
     graph_assembler.AssembleDiploids();
   } else {
     timer.Start();
