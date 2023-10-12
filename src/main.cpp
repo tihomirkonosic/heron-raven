@@ -47,7 +47,7 @@ namespace {
       {nullptr, 0, nullptr, 0}
   };
 
-  std::string optstr = "K:W:F:Hp:s:D:f:rdt:vho:u:x:U:PR:g:";
+  std::string optstr = "K:W:F:Hp:s:D:f:rdt:vho:u:x:y:U:PR:g:";
 
   void Help() {
     std::cout <<
@@ -336,7 +336,9 @@ int main(int argc, char **argv) {
   if (ul_sequences.empty()) {
     graph_assembler.Assemble();
     graph.PrintGfa("post_cleaning.gfa");
-    graph_assembler.AssembleDiploids();
+    if(ploidy >= 2){
+      graph_assembler.AssembleDiploids();
+    }
   } else {
     timer.Start();
     graph_assembler.UlAssemble(ul_sequences);
