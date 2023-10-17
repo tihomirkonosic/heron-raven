@@ -18,8 +18,11 @@ namespace raven {
 
     // simplify with transitive reduction, tip prunning and bubble popping
     void Assemble();
-
+    
+    void AssembleHaploids();
+    
     void AssembleDiploids();
+    
 
     void UlAssemble(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_sequences);
 

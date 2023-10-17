@@ -338,6 +338,8 @@ int main(int argc, char **argv) {
     graph.PrintGfa("post_cleaning.gfa");
     if(ploidy >= 2){
       graph_assembler.AssembleDiploids();
+    } else {
+      graph_assembler.AssembleHaploids();
     }
   } else {
     timer.Start();

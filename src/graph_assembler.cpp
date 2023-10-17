@@ -165,6 +165,21 @@ namespace raven {
               << std::endl;
   }
 
+  void Graph_Assembler::AssembleHaploids(){
+      if (graph_.stage() != Graph_Stage::Assemble_Diploids) {
+      return;
+    }
+    biosoup::Timer timer{};
+
+    timer.Start();
+
+    graph_.SalvageHaplotypes();
+
+    std::cerr << "[raven::Graph::AssembleHaploids] Created haplotypes "
+              << std::fixed << timer.Stop() << "s"
+              << std::endl;
+  }
+
   void Graph_Assembler::UlAssemble(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_sequences) {
     if (graph_.stage() != Graph_Stage::Assemble_Transitive_Edges
         && graph_.stage() != Graph_Stage::Assemble_Tips_Bubbles
