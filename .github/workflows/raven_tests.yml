@@ -2,9 +2,9 @@ name: Raven_Tests
 
 on:
   push:
-    branches: [ "tkonosic/gtests" ]
+    branches: [ tkonosic/gtests ]
   pull_request:
-    branches: [ "tkonosic/gtests" ]
+    branches: [ tkonosic/gtests ]
 
 env:
   BUILD_TYPE: Debug
