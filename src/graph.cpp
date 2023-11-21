@@ -25,7 +25,6 @@ namespace raven {
                      thread_pool :
                      std::make_shared<thread_pool::ThreadPool>(1)) {}
 
-
   void Graph::DuplicateGraph() {
     for (const auto &it: nodes_) {
       if (it == nullptr)
