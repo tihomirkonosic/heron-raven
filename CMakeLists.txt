@@ -160,6 +160,8 @@ set_property(TARGET raven_exe PROPERTY OUTPUT_NAME raven)
 install(TARGETS raven_exe DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (raven_build_tests)
+  enable_testing()
+
   add_executable(raven_test
     test/raven_test.cpp)
 
@@ -170,4 +172,6 @@ if (raven_build_tests)
 
   target_compile_definitions(raven_test
     PRIVATE TEST_DATA="${PROJECT_SOURCE_DIR}/test/data/")
+
+  gtest_discover_tests(raven_test)
 endif ()
