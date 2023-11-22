@@ -1,6 +1,8 @@
 name: Raven_Tests
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [ tkonosic/gtests ]
 
 env:
   BUILD_TYPE: Debug
