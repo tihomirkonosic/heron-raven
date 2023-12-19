@@ -132,8 +132,8 @@ int main(int argc, char **argv) {
 
 	std::uint8_t ploidy = 2;
 
-  std::uint8_t kmer_len = 15;
-  std::uint8_t window_len = 5;
+  std::uint8_t kmer_len = 31;
+  std::uint8_t window_len = 17;
   std::uint16_t bandwidth = 500;
   std::uint16_t chain_n = 4;
   std::uint16_t match_n = 100;
@@ -307,9 +307,10 @@ int main(int argc, char **argv) {
 
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!skip_contruction){
-      graph_constructor.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
+    std::cout << "Constructing graph with params: kmer_size:" << kmer_len  << " winodw_size:" << window_len << " " << std::endl;
+    graph_constructor.Construct(sequences, disagreement, split, kMaxNumOverlaps, ploidy, kmer_len, window_len, bandwidth, chain_n, match_n, gap_size, freq, hpc, paf, valid_region_size);
   } else {
-      graph_constructor.LoadFromGfa(input_gfa_path);
+    graph_constructor.LoadFromGfa(input_gfa_path);
   }
 
   graph.PrintGfa("post_construction.gfa");
