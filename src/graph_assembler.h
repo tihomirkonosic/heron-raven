@@ -22,13 +22,8 @@ namespace raven {
     void AssembleHaploids();
     
     void AssembleDiploids();
-    
 
     void UlAssemble(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_sequences);
-
-  private:
-    Graph &graph_;
-    std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
 
     // inspired by (Myers 1995) & (Myers 2005)
     std::uint32_t RemoveTransitiveEdges();
@@ -41,6 +36,10 @@ namespace raven {
 
     // remove long edges in force directed layout
     std::uint32_t RemoveLongEdges(std::uint32_t num_round);
+
+  private:
+    Graph &graph_;
+    std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
 
     // use (Fruchterman & Reingold 1991) with (Barnes & Hut 1986) approximation
     // (draw with misc/plotter.py)
