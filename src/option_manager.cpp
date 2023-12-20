@@ -191,5 +191,12 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
     return 0;
   }
 
+  if (optind >= argc && !param.skip_contruction) {
+    std::cerr << "[raven::] error: missing input file!" << std::endl;
+    return 0;
+  }
+
+  param.sequence_path = argv[optind];
+
   return 1;
 }

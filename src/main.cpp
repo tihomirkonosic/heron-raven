@@ -1,7 +1,5 @@
 // Copyright (c) 2020 Robert Vaser
 
-#include <getopt.h>
-
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -24,10 +22,7 @@ int main(int argc, char **argv) {
   if (!ProcessParameters(argc, argv, param))
     return 0;
 
-  if (optind >= argc && !param.skip_contruction) {
-    std::cerr << "[raven::] error: missing input file!" << std::endl;
-    return 1;
-  }
+
 
   raven::min_unitig_size = param.min_unitig_size;
 
@@ -60,7 +55,7 @@ int main(int argc, char **argv) {
       || graph.stage() == raven::Graph_Stage::Construct_Graph_2
       || param.num_polishing_rounds > 2) && !param.skip_contruction) {
     try {
-      auto sparser = parser.CreateParser(argv[optind]);
+      auto sparser = parser.CreateParser(param.sequence_path);
       if (sparser == nullptr) {
         return 1;
       }

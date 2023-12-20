@@ -41,6 +41,8 @@ struct Program_Parameters {
   std::uint32_t min_unitig_size = 9999;
   std::uint16_t valid_region_size = 4;
   bool paf = false;
+
+  std::string sequence_path;
 };
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param);
