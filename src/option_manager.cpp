@@ -153,7 +153,7 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         param.num_threads = atoi(optarg);
         break;
       case 'v':
-        //std::cout << VERSION << std::endl;
+        std::cout << RAVEN_VERSION << std::endl;
         return 0;
       case 'h':
         Help();

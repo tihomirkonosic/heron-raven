@@ -24,8 +24,6 @@ int main(int argc, char **argv) {
   if (!ProcessParameters(argc, argv, param))
     return 0;
 
-  std::cout << VERSION << std::endl;
-
   if (optind >= argc && !param.skip_contruction) {
     std::cerr << "[raven::] error: missing input file!" << std::endl;
     return 1;

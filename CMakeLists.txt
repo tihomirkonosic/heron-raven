@@ -149,13 +149,14 @@ target_include_directories(raven PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
 
 add_executable(raven_exe
-  src/main.cpp)
+  src/main.cpp
+)
 
 target_link_libraries(raven_exe
   raven)
 
 
-target_compile_definitions(raven_exe PRIVATE VERSION="${PROJECT_VERSION}")
+target_compile_definitions(raven PUBLIC RAVEN_VERSION="${PROJECT_VERSION}")
 set_property(TARGET raven_exe PROPERTY OUTPUT_NAME raven)
 
 install(TARGETS raven_exe DESTINATION ${CMAKE_INSTALL_BINDIR})
