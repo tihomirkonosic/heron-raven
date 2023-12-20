@@ -135,6 +135,7 @@ add_library(raven
   src/parser.cpp
   src/graph_constructor.cpp
   src/graph_assembler.cpp
+  src/option_manager.cpp
 )
 
 target_link_libraries(raven
