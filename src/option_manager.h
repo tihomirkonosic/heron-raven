@@ -37,7 +37,7 @@ struct Program_Parameters {
 
   std::uint32_t num_threads = 1;
 
-  std::size_t kMaxNumOverlaps = 16;
+  std::size_t max_overlaps = 16;
   std::uint32_t min_unitig_size = 9999;
   std::uint16_t valid_region_size = 4;
   bool paf = false;
