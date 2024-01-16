@@ -175,5 +175,5 @@ if (raven_build_tests)
   target_compile_definitions(raven_test
     PRIVATE TEST_DATA="${PROJECT_SOURCE_DIR}/test/data/")
 
-  gtest_discover_tests(raven_test)
+  gtest_add_tests(TARGET raven_test SOURCES test/raven_test.cpp)
 endif ()
