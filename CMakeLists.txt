@@ -136,6 +136,7 @@ add_library(raven
   src/graph_constructor.cpp
   src/graph_assembler.cpp
   src/option_manager.cpp
+  src/overlap_parser.cpp
 )
 
 target_link_libraries(raven
