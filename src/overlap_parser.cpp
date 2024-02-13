@@ -2,7 +2,7 @@
 #include "overlap_parser.h"
 
 namespace raven {
-  void OverlapParser::AddPafOverlapToList(std::vector<std::unique_ptr<PafOverlap>>& dst, bool shorten_names) {
+  void OverlapParser::AddPafOverlapToList(std::vector<std::unique_ptr<Overlap>>& dst, bool shorten_names) {
     const char* q_name = nullptr;
     std::uint32_t q_name_len = 0;
     std::uint32_t q_len = 0;
@@ -79,7 +79,7 @@ namespace raven {
         "[bioparser::PafParser] error: invalid file format");
     }
 
-    dst.emplace_back(std::unique_ptr<PafOverlap>(new PafOverlap(
+    dst.emplace_back(std::unique_ptr<Overlap>(new Overlap(
       q_name, q_name_len, q_len, q_begin, q_end,
       orientation,
       t_name, t_name_len, t_len, t_begin, t_end,
@@ -88,7 +88,7 @@ namespace raven {
       quality)));
   }
 
-  void OverlapParser::AddSamOverlapToList(std::vector<std::unique_ptr<SamOverlap>>& dst, bool shorten_names)
+  void OverlapParser::AddSamOverlapToList(std::vector<std::unique_ptr<Overlap>>& dst, bool shorten_names)
   {
     const char* q_name = nullptr;
     std::uint32_t q_name_len = 0;
@@ -173,21 +173,21 @@ namespace raven {
     }
 
     q_name_len = shorten_names ?
-                 this->Shorten(q_name, q_name_len) :
-                 this->RightStrip(q_name, q_name_len);
+                 Shorten(q_name, q_name_len) :
+                 RightStrip(q_name, q_name_len);
 
     t_name_len = shorten_names ?
-                 this->Shorten(t_name, t_name_len) :
-                 this->RightStrip(t_name, t_name_len);
+                 Shorten(t_name, t_name_len) :
+                 RightStrip(t_name, t_name_len);
 
-    cigar_len = this->RightStrip(cigar, cigar_len);
+    cigar_len = RightStrip(cigar, cigar_len);
 
     t_next_name_len = shorten_names ?
-                      this->Shorten(t_next_name, t_next_name_len) :
-                      this->RightStrip(t_next_name, t_next_name_len);
+                      Shorten(t_next_name, t_next_name_len) :
+                      RightStrip(t_next_name, t_next_name_len);
 
-    data_len = this->RightStrip(data, data_len);
-    quality_len = this->RightStrip(quality, quality_len);
+    data_len = RightStrip(data, data_len);
+    quality_len = RightStrip(quality, quality_len);
 
     if (q_name_len == 0 || t_name_len == 0 || cigar_len == 0 ||
         t_next_name_len == 0 || data_len == 0 || quality_len == 0 ||
@@ -196,7 +196,7 @@ namespace raven {
         "[bioparser::SamParser] error: invalid file format");
     }
 
-    dst.emplace_back(std::unique_ptr<SamOverlap>(new SamOverlap(
+    dst.emplace_back(std::unique_ptr<Overlap>(new Overlap(
       q_name, q_name_len,
       flag,
       t_name, t_name_len, t_begin,
@@ -208,21 +208,20 @@ namespace raven {
       quality, quality_len)));
   }
 
-  std::vector<std::unique_ptr<PafOverlap>> OverlapParser::ParsePaf(std::uint64_t bytes, bool shorten_names)
+  std::vector<std::unique_ptr<Overlap>> OverlapParser::ParsePaf(std::uint64_t bytes, bool shorten_names)
   {
-    return Parse<PafOverlap>(bytes, shorten_names, &OverlapParser::AddPafOverlapToList);
+    return Parse(bytes, shorten_names, &OverlapParser::AddPafOverlapToList);
   }
 
-  std::vector<std::unique_ptr<SamOverlap>> OverlapParser::ParseSam(std::uint64_t bytes, bool shorten_names)
+  std::vector<std::unique_ptr<Overlap>> OverlapParser::ParseSam(std::uint64_t bytes, bool shorten_names)
   {
-    return Parse<SamOverlap>(bytes, shorten_names, &OverlapParser::AddSamOverlapToList);
+    return Parse(bytes, shorten_names, &OverlapParser::AddSamOverlapToList);
   }
 
-  template <class T>
-  std::vector<std::unique_ptr<T>> OverlapParser::Parse(std::uint64_t bytes, bool shorten_names,
-                                                       void (OverlapParser::*add_overlap_to_list)(std::vector<std::unique_ptr<T>>& dst, bool shorten_names))
+  std::vector<std::unique_ptr<Overlap>> OverlapParser::Parse(std::uint64_t bytes, bool shorten_names,
+                                                       void (OverlapParser::*add_overlap_to_list)(std::vector<std::unique_ptr<Overlap>>& dst, bool shorten_names))
   {
-    std::vector<std::unique_ptr<T>> dst;
+    std::vector<std::unique_ptr<Overlap>> dst;
     std::uint64_t parsed_bytes = 0;
     bool is_eof = false;
 
