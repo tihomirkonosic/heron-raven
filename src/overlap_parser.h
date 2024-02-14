@@ -9,6 +9,12 @@
 
 namespace raven {
 
+  struct OverlapDescriptor {
+    std::string name;
+    std::string type;
+    std::string data;
+  };
+
   struct Overlap {
   public:
     Overlap() = default;
@@ -25,7 +31,8 @@ namespace raven {
       std::uint32_t t_end,
       std::uint32_t score,
       std::uint32_t overlap_len,
-      std::uint32_t quality)
+      std::uint32_t quality,
+      std::vector<OverlapDescriptor> descriptors)
       :
       lhs_id(0),
       lhs_begin(q_begin),
@@ -41,7 +48,8 @@ namespace raven {
       t_name(t_name, t_name_len),
       t_len(t_len),
       overlap_len(overlap_len),
-      paf_quality(quality) {}
+      paf_quality(quality),
+      descriptors(descriptors) {}
 
     Overlap(
       const char *q_name, std::uint32_t q_name_len,
@@ -54,7 +62,8 @@ namespace raven {
       std::uint32_t t_next_begin,
       std::uint32_t template_len,
       const char *data, std::uint32_t data_len,
-      const char *quality, std::uint32_t quality_len)
+      const char *quality, std::uint32_t quality_len,
+      std::vector<OverlapDescriptor> descriptors)
       :
       lhs_id(0),
       lhs_begin(0),
@@ -73,7 +82,8 @@ namespace raven {
       t_next_begin(t_next_begin),
       template_len(template_len),
       data(data, data_len),
-      sam_quality(quality, quality_len) {}
+      sam_quality(quality, quality_len),
+      descriptors(descriptors) {}
 
     Overlap(const Overlap &) = default;
 
@@ -111,6 +121,9 @@ namespace raven {
     std::uint32_t template_len;
     std::string data;
     std::string sam_quality;
+
+    //descriptors
+    std::vector<OverlapDescriptor> descriptors;
   };
 
   class OverlapParser {

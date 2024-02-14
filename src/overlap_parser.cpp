@@ -25,6 +25,8 @@ namespace raven {
 
     std::uint32_t num_values = 0;
     std::uint32_t begin_ptr = 0;
+    std::vector<OverlapDescriptor> descriptors;
+
     while (true) {
       auto end_ptr = begin_ptr;
       while (end_ptr < storage_ptr && line_[end_ptr] != '\t') {
@@ -51,11 +53,24 @@ namespace raven {
         case 9: num_matches = std::atoi(line_.data() + begin_ptr); break;  // NOLINT
         case 10: overlap_len = std::atoi(line_.data() + begin_ptr); break;  // NOLINT
         case 11: quality = std::atoi(line_.data() + begin_ptr); break;  // NOLINT
-        default: break;
       }
 
-      ++num_values;
-      if (end_ptr == storage_ptr || num_values == 12) {
+      if (num_values == 12) {
+        //parse descriptors
+        std::string desc_str(line_.data() + begin_ptr);
+        int pos1 = desc_str.find(':', 0);
+        int pos2 = desc_str.find(':', pos1 + 1);
+        OverlapDescriptor desc {
+          desc_str.substr(0, pos1),
+          desc_str.substr(pos1 + 1, pos2 - pos1 - 1),
+          desc_str.substr(pos2 + 1)
+        };
+        descriptors.emplace_back(desc);
+      } else {
+        ++num_values;
+      }
+
+      if (end_ptr == storage_ptr) {
         break;
       }
       begin_ptr = end_ptr + 1;
@@ -85,7 +100,8 @@ namespace raven {
       t_name, t_name_len, t_len, t_begin, t_end,
       num_matches,
       overlap_len,
-      quality)));
+      quality,
+      descriptors)));
   }
 
   void OverlapParser::AddSamOverlapToList(std::vector<std::unique_ptr<Overlap>>& dst, bool shorten_names)
@@ -120,6 +136,8 @@ namespace raven {
 
     std::uint32_t num_values = 0;
     std::uint32_t begin_ptr = 0;
+    std::vector<OverlapDescriptor> descriptors;
+
     while (true) {
       auto end_ptr = begin_ptr;
       while (end_ptr < storage_ptr && line_[end_ptr] != '\t') {
@@ -157,11 +175,24 @@ namespace raven {
           quality = line_.data() + begin_ptr;
           quality_len = end_ptr - begin_ptr;
           break;
-        default: break;
       }
 
-      ++num_values;
-      if (end_ptr == storage_ptr || num_values == 11) {
+      if (num_values == 11) {
+        //parse descriptors
+        std::string desc_str(line_.data() + begin_ptr);
+        int pos1 = desc_str.find(':', 0);
+        int pos2 = desc_str.find(':', pos1 + 1);
+        OverlapDescriptor desc {
+          desc_str.substr(0, pos1),
+          desc_str.substr(pos1 + 1, pos2 - pos1 - 1),
+          desc_str.substr(pos2 + 1)
+        };
+        descriptors.emplace_back(desc);
+      } else {
+        ++num_values;
+      }
+
+      if (end_ptr == storage_ptr) {
         break;
       }
       begin_ptr = end_ptr + 1;
@@ -205,7 +236,8 @@ namespace raven {
       t_next_name, t_next_name_len, t_next_begin,
       template_len,
       data, data_len,
-      quality, quality_len)));
+      quality, quality_len,
+      descriptors)));
   }
 
   std::vector<std::unique_ptr<Overlap>> OverlapParser::ParsePaf(std::uint64_t bytes, bool shorten_names)
