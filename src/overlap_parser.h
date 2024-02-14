@@ -7,6 +7,8 @@
 #include <cstring>
 #include "zlib.h"
 
+#define STORAGE_SIZE 65536
+
 namespace raven {
 
   struct OverlapDescriptor {
@@ -129,19 +131,16 @@ namespace raven {
   class OverlapParser {
   public:
     OverlapParser(const OverlapParser &) = delete;
-
     OverlapParser &operator=(const OverlapParser &) = delete;
-
     OverlapParser(OverlapParser &&) = delete;
-
     OverlapParser &operator=(OverlapParser &&) = delete;
 
     OverlapParser(gzFile file)
       : file_(file, gzclose),
-        buffer_(storage_size_, 0),  // 64 kB
+        buffer_(STORAGE_SIZE, 0),  // 64 kB
         buffer_ptr_(0),
         buffer_bytes_(0),
-        line_(storage_size_, 0),
+        line_(STORAGE_SIZE, 0),
         line_ptr_(0) {}
 
     virtual ~OverlapParser() {}
@@ -178,8 +177,6 @@ namespace raven {
     std::uint32_t buffer_bytes_;
     std::vector<char> line_;
     std::uint32_t line_ptr_;
-
-    const std::uint32_t storage_size_ = 65536; // 64 kB
   };
 
 } // raven
