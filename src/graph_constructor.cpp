@@ -1261,7 +1261,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_construction.gfa");
+      graph_.PrintGfa("after_construction.gfa", false);
     }
 
     // checkpoint

@@ -482,7 +482,7 @@ namespace raven {
     unitig_edges_.insert(unitig_edges_.end(), unitig_edges.begin(), unitig_edges.end());
 
     std::string output_path = "unitig_graph.gfa";
-    PrintUnitigGfa(output_path);
+    PrintUnitigGfa(output_path, true);
   }
 
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> Graph::GetUnitigPairs(bool drop_unpolished) {
@@ -637,7 +637,7 @@ namespace raven {
     os.close();
   }
 
-  void Graph::PrintGfa(const std::string &path) const {
+  void Graph::PrintGfa(const std::string &path, const bool print_seq) const {
     if (path.empty()) {
       return;
     }
@@ -652,7 +652,7 @@ namespace raven {
       //   continue;
       // }
       os << "S\t" << it->sequence.name
-         << "\t" << it->sequence.InflateData()
+         << "\t" << (print_seq ? it->sequence.InflateData() : "*")
          << "\tLN:i:" << it->sequence.inflated_len
          << "\tRC:i:" << it->count
          << "\tCL:z:" << (it->color ? "blue" : "orange")
@@ -707,7 +707,7 @@ namespace raven {
     os.close();
   }
 
-  void Graph::PrintUnitigGfa(const std::string &path) const {
+  void Graph::PrintUnitigGfa(const std::string &path, const bool print_seq) const {
     if (path.empty()) {
       return;
     }
@@ -719,7 +719,7 @@ namespace raven {
       }
 
       os << "S\t" << it->sequence.name
-         << "\t" << it->sequence.InflateData()
+         << "\t" << (print_seq ? it->sequence.InflateData() : "*")
          << "\tLN:i:" << it->sequence.inflated_len
          << "\tRC:i:" << it->count
          << "\tCL:z:" << (it->color ? "blue" : "orange")

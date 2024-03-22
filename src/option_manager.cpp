@@ -14,6 +14,7 @@ enum program_opt {
   opt_output,
   opt_input_gfa,
   opt_paf,
+  opt_print_gfa_seq,
 
   opt_kmer_len,
   opt_window_len,
@@ -47,6 +48,7 @@ static struct option options[] = {
     {"output", required_argument, nullptr, opt_output},
     {"input-gfa", required_argument, nullptr, opt_input_gfa},
     {"paf", no_argument, nullptr, opt_paf},
+    {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
 
     {"kmer-len", required_argument, nullptr, opt_kmer_len},
     {"window-len", required_argument, nullptr, opt_window_len},
@@ -106,6 +108,8 @@ void Help() {
             "      input GFA file name, if it is set raven will skip construction phase\n"
             "    --paf\n"
             "      overlaps are stored to files in PAF format\n"
+            "    --print-seq\n"
+            "      print sequences in GFA file\n"
             "\n"
             "  Overlap:\n"
             "    -K, --kmer-len <int>\n"
@@ -202,6 +206,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_paf:
         param.paf = true;
+        break;
+      case opt_print_gfa_seq:
+        param.print_gfa_seq = true;
         break;
       case opt_kmer_len:
       case 'K':
