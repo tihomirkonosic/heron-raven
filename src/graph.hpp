@@ -93,7 +93,7 @@ namespace raven {
     void PrintCsv(const std::string &path) const;
 
     // draw with Bandage
-    void PrintGfa(const std::string &path) const;
+    void PrintGfa(const std::string &path, const bool print_seq) const;
 
     // print overlaps in PAF file format
     void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps,
@@ -101,7 +101,7 @@ namespace raven {
                        const std::string &path) const;
 
     // draw unitig graph with Bandage
-    void PrintUnitigGfa(const std::string &path) const;
+    void PrintUnitigGfa(const std::string &path, const bool print_seq) const;
 
     // cereal load wrapper
     void Load();

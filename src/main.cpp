@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
     graph_constructor.LoadFromGfa(param.input_gfa_path);
   }
 
-  graph.PrintGfa("post_construction.gfa");
+  graph.PrintGfa("post_construction.gfa", param.print_gfa_seq);
   raven::Graph_Assembler graph_assembler{graph, thread_pool};
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
   if (!param.ul_read_path.empty()){
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 
   if (ul_sequences.empty()) {
     graph_assembler.Assemble();
-    graph.PrintGfa("post_cleaning.gfa");
+    graph.PrintGfa("post_cleaning.gfa", param.print_gfa_seq);
     if(param.ploidy >= 2){
       graph_assembler.AssembleDiploids();
     } else {
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     graph_assembler.UlAssemble(ul_sequences);
   }
 
-  graph.PrintGfa(param.gfa_path);
+  graph.PrintGfa(param.gfa_path, param.print_gfa_seq);
 
   if (param.stdoutput) {
     // output to stdout

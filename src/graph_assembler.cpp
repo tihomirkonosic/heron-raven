@@ -31,7 +31,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_transitive.gfa");
+      graph_.PrintGfa("after_transitive.gfa", false);
     }
 
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
@@ -74,7 +74,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_bubble.gfa");
+      graph_.PrintGfa("after_bubble.gfa", false);
     }
 
     // checkpoint
@@ -102,7 +102,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_force.gfa");
+      graph_.PrintGfa("after_force.gfa", false);
     }
 
     // checkpoint
@@ -188,7 +188,7 @@ namespace raven {
     }
 
     biosoup::Timer timer{};
-    graph_.PrintGfa("after_construction.gfa");
+    graph_.PrintGfa("after_construction.gfa", false);
 
     // remove transitive edges
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
@@ -200,7 +200,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_transitive.gfa");
+      graph_.PrintGfa("after_transitive.gfa", false);
     }
 
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {

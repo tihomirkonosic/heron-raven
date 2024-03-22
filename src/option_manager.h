@@ -41,6 +41,7 @@ struct Program_Parameters {
   std::uint32_t min_unitig_size = 9999;
   std::uint16_t valid_region_size = 4;
   bool paf = false;
+  bool print_gfa_seq = false;
 
   std::string sequence_path;
 };
