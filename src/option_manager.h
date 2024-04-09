@@ -6,12 +6,10 @@
 #include <string>
 
 struct Program_Parameters {
-  unsigned split = 0;
-
   std::uint8_t ploidy = 2;
 
-  std::uint8_t kmer_len = 31;
-  std::uint8_t window_len = 17;
+  std::uint8_t kmer_len = 41;
+  std::uint8_t window_len = 41;
   std::uint16_t bandwidth = 500;
   std::uint16_t chain_n = 4;
   std::uint16_t match_n = 100;
@@ -26,6 +24,7 @@ struct Program_Parameters {
   std::string ul_read_path;
 
   double disagreement = 0.1;
+  unsigned split = 0;
   std::string gfa_path = "";
   std::string input_gfa_path = "";
   bool skip_contruction = false;

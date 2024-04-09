@@ -5,6 +5,7 @@
 #include <memory>
 #include "biosoup/nucleic_acid.hpp"
 #include "pile.hpp"
+#include "option_manager.h"
 
 namespace raven {
 
@@ -19,20 +20,7 @@ namespace raven {
     // spanning bridged repeats at sequence ends
     void Construct(
         std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,  // NOLINT
-        double disagreement = 0.1,
-        unsigned split = 0,
-        std::size_t kMaxNumOverlaps = 16,
-				std::uint8_t ploidy = 2,
-        std::uint8_t kmer_len = 41,
-        std::uint8_t window_len = 41,
-        std::uint16_t bandwidth = 500,
-        std::uint16_t chain_n = 4,
-        std::uint16_t match_n = 100,
-        std::uint16_t gap_size = 10000,
-        double freq = 0.001,
-				bool hpc = false,
-        bool paf = false,
-        std::uint16_t valid_region_treshold = 4);
+        Program_Parameters &param);
 
     void LoadFromGfa(const std::string &gfa_path);
   private:

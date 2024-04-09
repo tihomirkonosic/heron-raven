@@ -8,6 +8,7 @@
 #include "edlib.h"
 #include "biosoup/timer.hpp"
 
+
 namespace raven {
   Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
       : graph_(graph), thread_pool_(thread_pool ?
@@ -18,22 +19,9 @@ namespace raven {
 
   void Graph_Constructor::Construct(
       std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,  // NOLINT
-      double disagreement,
-      unsigned split,
-      std::size_t kMaxNumOverlaps,
-			std::uint8_t ploidy,
-      std::uint8_t kmer_len,
-      std::uint8_t window_len,
-      std::uint16_t bandwidth,
-      std::uint16_t chain_n,
-      std::uint16_t match_n,
-      std::uint16_t gap_size,
-      double freq,
-			bool hpc,
-      bool paf,
-      std::uint16_t valid_region_treshold) {
+      Program_Parameters &param) {
 
-    disagreement_ = disagreement;
+    disagreement_ = param.disagreement;
 
     if (sequences.empty()) {
       return;
@@ -487,12 +475,12 @@ namespace raven {
 
     ram::MinimizerEngine minimizer_engine{
         thread_pool_,
-        kmer_len,
-        window_len,
-        bandwidth,
-        chain_n,
-        match_n,
-        gap_size
+        param.kmer_len,
+        param.window_len,
+        param.bandwidth,
+        param.chain_n,
+        param.match_n,
+        param.gap_size
     };
 
     // find overlaps and create piles
@@ -514,7 +502,7 @@ namespace raven {
             sequences.begin() + j,
             sequences.begin() + i + 1,
             true);
-        minimizer_engine.Filter(freq);
+        minimizer_engine.Filter(param.freq);
 
         std::cerr << "[raven::Graph::Construct] minimized "
                   << j << " - " << i + 1 << " / " << sequences.size() << " "
@@ -534,7 +522,7 @@ namespace raven {
           thread_futures.emplace_back(thread_pool_->Submit(
               [&](std::uint32_t i) -> std::vector<biosoup::Overlap> { // map sequences and fill out the potential snp list
                 std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
-                                                                           true, hpc);
+                                                                           true, param.hpc);
                 if (!ovlps.empty()) {
                   std::vector<biosoup::Overlap> ovlps_final;
 
@@ -570,7 +558,7 @@ namespace raven {
 
                   };
 
-									if(ploidy >= 2){
+									if(param.ploidy >= 2){
 										call_snps(i, ovlps_final);
 									}
                   return ovlps_final;
@@ -608,9 +596,9 @@ namespace raven {
 
                   num_overlaps[i] = std::min(
                       overlaps[i].size(),
-                      kMaxNumOverlaps);
+                      param.max_overlaps);
 
-                  if (overlaps[i].size() < kMaxNumOverlaps) {
+                  if (overlaps[i].size() < param.max_overlaps) {
                     return;
                   }
 
@@ -622,7 +610,7 @@ namespace raven {
 
                   std::vector<biosoup::Overlap> tmp;
                   tmp.insert(tmp.end(), overlaps[i].begin(),
-                             overlaps[i].begin() + kMaxNumOverlaps);  // NOLINT
+                             overlaps[i].begin() + param.max_overlaps);  // NOLINT
                   tmp.swap(overlaps[i]);
                 },
                 it->id()));
@@ -640,7 +628,7 @@ namespace raven {
         j = i + 1;
       }
 
-      if (print_snp_data && ploidy >= 2) {
+      if (print_snp_data && param.ploidy >= 2) {
         std::ofstream outdata;
         outdata.open("snp_annotations.anno");
 
@@ -659,7 +647,7 @@ namespace raven {
 
     }
 
-    if (paf == true) {
+    if (param.paf == true) {
       graph_.PrintOverlaps(overlaps, sequences, false, "afterSNP.paf");
     }
 
@@ -671,7 +659,7 @@ namespace raven {
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->Submit(
             [&](std::uint32_t i) -> void {
-              graph_.piles_[i]->FindValidRegion(valid_region_treshold);
+              graph_.piles_[i]->FindValidRegion(param.valid_region_size);
               if (graph_.piles_[i]->is_invalid()) {
                 std::vector<biosoup::Overlap>().swap(overlaps[i]);
               } else {
@@ -806,7 +794,7 @@ namespace raven {
                 << std::endl;
     }
 
-    if (paf == true) {
+    if (param.paf == true) {
       graph_.PrintOverlaps(overlaps, sequences, false, "afterContained.paf");
     }
 
@@ -880,7 +868,7 @@ namespace raven {
                 << std::endl;
     }
 
-    if (paf == true) {
+    if (param.paf == true) {
       graph_.PrintOverlaps(overlaps, sequences, false, "afterChimeric.paf");
     }
 
@@ -954,9 +942,9 @@ namespace raven {
                     true,  // avoid equal
                     true,  // avoid symmetric
                     false,  // minhash
-                    hpc,
+                    param.hpc,
                     &filtered);
-                graph_.piles_[sequences[i]->id]->AddKmers(filtered, kmer_len, sequences[i]); // NOLINT
+                graph_.piles_[sequences[i]->id]->AddKmers(filtered, param.kmer_len, sequences[i]); // NOLINT
 
                 std::uint32_t k = 0;
                 for (std::uint32_t j = 0; j < dst.size(); ++j) {
@@ -1219,7 +1207,7 @@ namespace raven {
         node->pair = graph_.nodes_.back().get();
         node->pair->pair = node.get();
 
-        if (it->id() < split) {
+        if (it->id() < param.split) {
           node->color = 1;
           node->pair->color = 1;
         }
