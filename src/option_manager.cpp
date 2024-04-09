@@ -1,6 +1,7 @@
 
 #include <getopt.h>
 #include <iostream>
+#include <filesystem>
 #include "option_manager.h"
 
 enum program_opt {
@@ -173,6 +174,7 @@ void Help() {
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
   int arg;
+
   while ((arg = getopt_long(argc, argv, optstr.c_str(), options, nullptr)) != -1) {  // NOLINT
     switch (arg) {
       case opt_error_corrected_reads:
@@ -197,8 +199,15 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         Help();
         return 0;
       case opt_output:
-        param.output_path = optarg;
-        param.stdoutput = false;
+        param.root_path = optarg;
+        {
+          std::filesystem::path noext{""};
+          std::filesystem::path path_prefix {param.root_path};
+          path_prefix.replace_extension(noext);
+          if (!path_prefix.has_filename())
+            path_prefix /= "raven";
+          param.root_path = path_prefix.string();
+        }
         break;
       case opt_input_gfa:
         param.input_gfa_path = optarg;

@@ -122,19 +122,10 @@ int main(int argc, char **argv) {
 
   graph.PrintGfa(param.gfa_path, param.print_gfa_seq);
 
-  if (param.stdoutput) {
-    // output to stdout
-    for (const auto &it: graph.GetUnitigs(param.num_polishing_rounds > 0)) {
-      std::cout << ">" << it->name << std::endl;
-      std::cout << it->InflateData() << std::endl;
-    }
-  } else if(param.ploidy >= 2){
+  if(param.ploidy >= 2) {
     // output to file
-    std::filesystem::path root_path(param.output_path);
-    std::filesystem::path noext("");
-    root_path.replace_extension(noext);
-    std::filesystem::path path1 = root_path;
-    std::filesystem::path path2 = root_path;
+    std::filesystem::path path1 = param.root_path;
+    std::filesystem::path path2 = param.root_path;
     path1 += "-1.fasta";
     path2 += "-2.fasta";
     std::ofstream outfile1, outfile2;
@@ -163,13 +154,12 @@ int main(int argc, char **argv) {
     outfile1.close();
     outfile2.close();
   }
-  else if(param.ploidy == 1){
-    std::filesystem::path root_path(param.output_path);
-    std::filesystem::path noext("");
-    root_path.replace_extension(noext);
-    std::filesystem::path path1 = root_path;
+  else if(param.ploidy == 1) {
+    std::filesystem::path path1 = param.root_path;
+    path1 += ".fasta";
     std::ofstream outfile1;
 
+    outfile1.open(path1);
     if (!outfile1.is_open()) {
       std::cerr << "[raven::] error: cannot open file" << path1 << std::endl;
       return 1;
@@ -179,6 +169,13 @@ int main(int argc, char **argv) {
       outfile1 << ">" << it->name << std::endl;
       outfile1 << it->InflateData() << std::endl;
     }
+
+    /*
+    for (const auto &it: graph.GetUnitigs(param.num_polishing_rounds > 0)) {
+      outfile1 << ">" << it->name << std::endl;
+      outfile1 << it->InflateData() << std::endl;
+    }
+    */
 
     outfile1.close();
   }

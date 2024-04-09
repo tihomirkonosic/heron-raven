@@ -32,8 +32,7 @@ struct Program_Parameters {
   bool resume = false;
   bool checkpoints = true;
 
-  bool stdoutput = true;
-  std::string output_path = "";
+  std::string root_path{"out/raven"};
 
   std::uint32_t num_threads = 1;
 
