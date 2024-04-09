@@ -21,17 +21,32 @@ struct Program_Parameters {
 
   std::int32_t num_polishing_rounds = 0;
 
-  std::string ul_read_path;
-
   double disagreement = 0.1;
   unsigned split = 0;
-  std::string gfa_path = "";
-  std::string input_gfa_path = "";
   bool skip_contruction = false;
   bool resume = false;
   bool checkpoints = true;
 
   std::string root_path{"out/raven"};
+
+  std::string gfa_path = "";
+  std::string input_gfa_path = "";
+  std::string ul_read_path;
+  std::string sequence_path;
+
+  std::string gfa_after_construction_filename {"after_construction.gfa"};
+  std::string gfa_after_transitive_filename {"after_transitive.gfa"};
+  std::string gfa_after_bubble_filename {"after_bubble.gfa"};
+  std::string gfa_after_force_filename {"after_force.gfa"};
+  std::string gfa_post_construction_filename {"post_construction.gfa"};
+  std::string gfa_post_cleaning_filename {"post_cleaning.gfa"};
+  std::string gfa_unitig_graph_filename {"unitig_graph.gfa"};
+
+  std::string paf_after_snp_filename {"afterSNP.paf"};
+  std::string paf_after_contained_filename {"afterContained.paf"};
+  std::string paf_after_chimeric_filename {"afterChimeric.paf"};
+
+  std::string cereal_filename {"backup.cereal"};
 
   std::uint32_t num_threads = 1;
 
@@ -40,8 +55,6 @@ struct Program_Parameters {
   std::uint16_t valid_region_size = 4;
   bool paf = false;
   bool print_gfa_seq = false;
-
-  std::string sequence_path;
 };
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param);

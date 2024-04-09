@@ -78,7 +78,7 @@ namespace raven {
 
     std::uint32_t CreateUnitigsAlternate(std::uint32_t epsilon = 0);
 
-    void CreateUnitigGraph();
+    void CreateUnitigGraph(const std::string &gfa_path);
 
     std::vector<std::unique_ptr<biosoup::NucleicAcid>> GetUnitigPairs(bool drop_unpolished = false);
 
@@ -104,13 +104,13 @@ namespace raven {
     void PrintUnitigGfa(const std::string &path, const bool print_seq) const;
 
     // cereal load wrapper
-    void Load();
+    void Load(const std::string &cereal_path);
 
     //
     //void LoadFromGfa(const std::string &nput_gfa_path);
 
     // cereal store wrapper
-    void Store() const;
+    void Store(const std::string &cereal_path) const;
 
     std::unordered_set<std::uint32_t> FindRemovableEdges(const std::vector<Node *> &path);
 

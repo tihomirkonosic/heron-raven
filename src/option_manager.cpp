@@ -207,6 +207,21 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
           if (!path_prefix.has_filename())
             path_prefix /= "raven";
           param.root_path = path_prefix.string();
+
+          param.gfa_path = param.root_path + "_" + param.gfa_path;
+          param.gfa_after_construction_filename = param.root_path + "_" + param.gfa_after_construction_filename;
+          param.gfa_after_transitive_filename = param.root_path + "_" + param.gfa_after_transitive_filename;
+          param.gfa_after_bubble_filename = param.root_path + "_" + param.gfa_after_bubble_filename;
+          param.gfa_after_force_filename = param.root_path + "_" + param.gfa_after_force_filename;
+          param.gfa_post_construction_filename = param.root_path + "_" + param.gfa_post_construction_filename;
+          param.gfa_post_cleaning_filename = param.root_path + "_" + param.gfa_post_cleaning_filename;
+          param.gfa_unitig_graph_filename = param.root_path + "_" + param.gfa_unitig_graph_filename;
+
+          param.paf_after_snp_filename = param.root_path + "_" + param.paf_after_snp_filename;
+          param.paf_after_contained_filename = param.root_path + "_" + param.paf_after_contained_filename;
+          param.paf_after_chimeric_filename = param.root_path + "_" + param.paf_after_chimeric_filename;
+
+          param.cereal_filename = param.root_path + "_" + param.cereal_filename;
         }
         break;
       case opt_input_gfa:

@@ -6,8 +6,8 @@
 #include "edlib.h"
 
 namespace raven {
-  Graph_Assembler::Graph_Assembler(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
-      : graph_(graph), thread_pool_(thread_pool ?
+  Graph_Assembler::Graph_Assembler(Graph &graph, Program_Parameters &param, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
+      : graph_(graph), param_(param), thread_pool_(thread_pool ?
                                     thread_pool :
                                     std::make_shared<thread_pool::ThreadPool>(1)) {
   }
@@ -31,7 +31,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_transitive.gfa", false);
+      graph_.PrintGfa(param_.gfa_after_transitive_filename, false);
     }
 
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
@@ -74,7 +74,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_bubble.gfa", false);
+      graph_.PrintGfa(param_.gfa_after_bubble_filename, false);
     }
 
     // checkpoint
@@ -102,7 +102,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_force.gfa", false);
+      graph_.PrintGfa(param_.gfa_after_force_filename, false);
     }
 
     // checkpoint
@@ -188,7 +188,7 @@ namespace raven {
     }
 
     biosoup::Timer timer{};
-    graph_.PrintGfa("after_construction.gfa", false);
+    graph_.PrintGfa(param_.gfa_after_construction_filename, false);
 
     // remove transitive edges
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
@@ -200,13 +200,13 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_transitive.gfa", false);
+      graph_.PrintGfa(param_.gfa_after_transitive_filename, false);
     }
 
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
       timer.Start();
 
-      graph_.CreateUnitigGraph();
+      graph_.CreateUnitigGraph(param_.gfa_unitig_graph_filename);
 
       std::cerr << "[raven::Graph::Assemble] created bubble chain "
                 << std::fixed << timer.Stop() << "s"

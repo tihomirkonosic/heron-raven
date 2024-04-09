@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
 
   if (param.resume) {
     try {
-      graph.Load();
+      graph.Load(param.cereal_filename);
     } catch (std::exception &exception) {
       std::cerr << exception.what() << std::endl;
       return 1;
@@ -86,8 +86,8 @@ int main(int argc, char **argv) {
     graph_constructor.LoadFromGfa(param.input_gfa_path);
   }
 
-  graph.PrintGfa("post_construction.gfa", param.print_gfa_seq);
-  raven::Graph_Assembler graph_assembler{graph, thread_pool};
+  graph.PrintGfa(param.gfa_post_construction_filename, param.print_gfa_seq);
+  raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
   if (!param.ul_read_path.empty()){
     try {
@@ -109,7 +109,7 @@ int main(int argc, char **argv) {
 
   if (ul_sequences.empty()) {
     graph_assembler.Assemble();
-    graph.PrintGfa("post_cleaning.gfa", param.print_gfa_seq);
+    graph.PrintGfa(param.gfa_post_cleaning_filename, param.print_gfa_seq);
     if(param.ploidy >= 2){
       graph_assembler.AssembleDiploids();
     } else {

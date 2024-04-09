@@ -468,7 +468,7 @@ namespace raven {
 
     // checkpoint test
     if (graph_.stage() == Graph_Stage::Construct_Graph && graph_.use_checkpoints()) {
-      graph_.Store();
+      graph_.Store(param.cereal_filename);
     }
 
     biosoup::Timer timer{};
@@ -648,7 +648,7 @@ namespace raven {
     }
 
     if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, "afterSNP.paf");
+      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_snp_filename);
     }
 
     // trim and annotate piles
@@ -795,7 +795,7 @@ namespace raven {
     }
 
     if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, "afterContained.paf");
+      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_contained_filename);
     }
 
     // resolve chimeric sequences
@@ -869,7 +869,7 @@ namespace raven {
     }
 
     if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, "afterChimeric.paf");
+      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_chimeric_filename);
     }
 
     // checkpoint
@@ -877,7 +877,7 @@ namespace raven {
       graph_.advance_stage();
       if (graph_.use_checkpoints()) {
         timer.Start();
-        graph_.Store();
+        graph_.Store(param.cereal_filename);
         std::cerr << "[raven::Graph::Construct] reached checkpoint "
                   << std::fixed << timer.Stop() << "s"
                   << std::endl;
@@ -1249,7 +1249,7 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa("after_construction.gfa", false);
+      graph_.PrintGfa(param.gfa_after_construction_filename, false);
     }
 
     // checkpoint
@@ -1257,7 +1257,7 @@ namespace raven {
       graph_.advance_stage();
       if (graph_.use_checkpoints()) {
         timer.Start();
-        graph_.Store();
+        graph_.Store(param.cereal_filename);
         std::cerr << "[raven::Graph::Construct] reached checkpoint "
                   << std::fixed << timer.Stop() << "s"
                   << std::endl;

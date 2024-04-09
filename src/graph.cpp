@@ -343,7 +343,7 @@ namespace raven {
     return unitigs.size() / 2;
   }
 
-  void Graph::CreateUnitigGraph() {
+  void Graph::CreateUnitigGraph(const std::string &gfa_path) {
     std::unordered_set<std::uint32_t> marked_edges;
     std::vector<std::shared_ptr<Node>> unitigs;
     std::vector<std::shared_ptr<Edge>> unitig_edges;
@@ -481,8 +481,7 @@ namespace raven {
     unitig_nodes_.insert(unitig_nodes_.end(), unitigs.begin(), unitigs.end());
     unitig_edges_.insert(unitig_edges_.end(), unitig_edges.begin(), unitig_edges.end());
 
-    std::string output_path = "unitig_graph.gfa";
-    PrintUnitigGfa(output_path, true);
+    PrintUnitigGfa(gfa_path, true);
   }
 
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> Graph::GetUnitigPairs(bool drop_unpolished) {
@@ -748,8 +747,8 @@ namespace raven {
     os.close();
   }
 
-  void Graph::Store() const {
-    std::ofstream os("raven.cereal");
+  void Graph::Store(const std::string &cereal_path) const {
+    std::ofstream os(cereal_path);
     try {
       cereal::BinaryOutputArchive archive(os);
       archive(*this);
@@ -758,8 +757,8 @@ namespace raven {
     }
   }
 
-  void Graph::Load() {
-    std::ifstream is("raven.cereal");
+  void Graph::Load(const std::string &cereal_path) {
+    std::ifstream is(cereal_path);
     try {
       cereal::BinaryInputArchive archive(is);
       archive(*this);
