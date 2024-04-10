@@ -24,13 +24,17 @@ struct Program_Parameters {
   double disagreement = 0.1;
   unsigned split = 0;
   bool skip_contruction = false;
+  bool skip_loading_fasta = false;
   bool resume = false;
   bool checkpoints = true;
 
   std::string root_path{"out/raven"};
 
   std::string gfa_path = "";
+  bool load_input_gfa = false;
   std::string input_gfa_path = "";
+  bool load_input_paf = false;
+  std::string input_paf_path = "";
   std::string ul_read_path;
   std::string sequence_path;
 

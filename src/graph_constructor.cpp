@@ -4,10 +4,11 @@
 #include <fstream>
 #include "graph.hpp"
 #include "graph_constructor.h"
+#include "overlap.h"
+#include "overlap_parser.h"
 #include "biosoup/overlap.hpp"
-#include "edlib.h"
 #include "biosoup/timer.hpp"
-
+#include "edlib.h"
 
 namespace raven {
   Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
@@ -1431,6 +1432,59 @@ namespace raven {
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
+    while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
+      graph_.advance_stage();
+    }
+  };
+
+  void Graph_Constructor::LoadFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, const std::string &paf_path){
+    try {
+      gzFile file = gzopen(paf_path.c_str(), "r");
+      OverlapParser parser {file};
+      std::vector<std::unique_ptr<Overlap>> overlaps = parser.ParsePaf((std::uint64_t )-1);
+
+      Node::num_objects = 0;
+      Edge::num_objects = 0;
+      std::map<std::string, std::shared_ptr<Node>> sequence_to_node;
+      std::uint32_t sequence_counter = 0;
+
+      for (std::unique_ptr<biosoup::NucleicAcid> &seq_ptr : sequences) {
+        biosoup::NucleicAcid seq = *seq_ptr.get();
+        seq.id = ++sequence_counter;
+        std::shared_ptr<Node> node = std::make_shared<Node>(seq);
+        graph_.nodes_.emplace_back(node);
+        seq.ReverseAndComplement();
+        graph_.nodes_.emplace_back(std::make_shared<Node>(seq));
+        node->pair = graph_.nodes_.back().get();
+        node->pair->pair = node.get();
+        sequence_to_node.emplace(seq.name, node);
+      }
+
+      bool tail_node_strand;
+      bool head_node_strand;
+
+      for (std::unique_ptr<Overlap> &overlap_ptr : overlaps) {
+        Overlap overlap = *overlap_ptr.get();
+        tail_node_strand = true;
+        head_node_strand = overlap.strand;
+
+        Node *tail_node = tail_node_strand ? sequence_to_node[overlap.q_name].get() : sequence_to_node[overlap.q_name]->pair;
+        Node * head_node = head_node_strand ? sequence_to_node[overlap.t_name].get() : sequence_to_node[overlap.t_name]->pair;
+
+        uint32_t length = overlap.q_len - overlap.overlap_len;
+        uint32_t length_pair = overlap.t_len - overlap.overlap_len;
+
+        std::shared_ptr<Edge> edge = std::make_shared<Edge>(tail_node, head_node, length);
+        graph_.edges_.emplace_back(edge);
+        graph_.edges_.emplace_back(std::make_shared<Edge>(head_node->pair, tail_node->pair, length_pair));  // NOLINT
+        edge->pair = graph_.edges_.back().get();
+        edge->pair->pair = edge.get();
+      }
+
+    } catch (const std::exception& e) {
+      std::cerr << "Exception: " << e.what() << std::endl;
+    }
+
     while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
       graph_.advance_stage();
     }

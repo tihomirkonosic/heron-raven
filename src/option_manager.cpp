@@ -14,6 +14,7 @@ enum program_opt {
   opt_help,
   opt_output,
   opt_input_gfa,
+  opt_input_paf,
   opt_paf,
   opt_print_gfa_seq,
 
@@ -48,6 +49,7 @@ static struct option options[] = {
     {"help", no_argument, nullptr, opt_help},
     {"output", required_argument, nullptr, opt_output},
     {"input-gfa", required_argument, nullptr, opt_input_gfa},
+    {"input-paf", required_argument, nullptr, opt_input_paf},
     {"paf", no_argument, nullptr, opt_paf},
     {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
 
@@ -107,6 +109,8 @@ void Help() {
             "      for diploid assembly, outputs will be written in 2 files with suffixes -1, -2\n"
             "    --input-gfa <string>\n"
             "      input GFA file name, if it is set raven will skip construction phase\n"
+            "    --input-paf <string>\n"
+            "      input PAF file name, if it is set raven will load overlaps from PAF file\n"
             "    --paf\n"
             "      overlaps are stored to files in PAF format\n"
             "    --print-seq\n"
@@ -225,7 +229,14 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         }
         break;
       case opt_input_gfa:
+        param.load_input_gfa = true;
         param.input_gfa_path = optarg;
+        param.skip_contruction = true;
+        param.skip_loading_fasta = true;
+        break;
+      case opt_input_paf:
+        param.load_input_paf = true;
+        param.input_paf_path = optarg;
         param.skip_contruction = true;
         break;
       case opt_paf:
@@ -306,7 +317,7 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
     return 0;
   }
 
-  if (optind >= argc && !param.skip_contruction) {
+  if (optind >= argc && !param.skip_loading_fasta) {
     std::cerr << "[raven::] error: missing input file!" << std::endl;
     return 0;
   }

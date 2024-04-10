@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
 
   if ((graph.stage() == raven::Graph_Stage::Construct_Graph
       || graph.stage() == raven::Graph_Stage::Construct_Graph_2
-      || param.num_polishing_rounds > 2) && !param.skip_contruction) {
+      || param.num_polishing_rounds > 2) && !param.skip_loading_fasta) {
     try {
       auto sparser = parser.CreateParser(param.sequence_path);
       if (sparser == nullptr) {
@@ -73,18 +73,24 @@ int main(int argc, char **argv) {
     std::cerr << "[raven::] loaded " << sequences.size() << " sequences "
             << std::fixed << timer.Stop() << "s"
             << std::endl;
-    } else {
-      std::cerr << "[raven::] skipped sequence loading" << std::endl;
-    }
-    timer.Start();
+  } else {
+    std::cerr << "[raven::] skipped sequence loading" << std::endl;
+  }
+  timer.Start();
 
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!param.skip_contruction){
     std::cout << "Constructing graph with params: kmer_size:" << param.kmer_len  << " winodw_size:" << param.window_len << " " << std::endl;
     graph_constructor.Construct(sequences, param);
-  } else {
+  } else if (param.load_input_gfa) {
     graph_constructor.LoadFromGfa(param.input_gfa_path);
+  } else if (param.load_input_paf) {
+    graph_constructor.LoadFromPaf(sequences, param.input_paf_path);
+  } else {
+    std::cerr << "[raven::] error: unknown option" << std::endl;
+    return 1;
   }
+
 
   graph.PrintGfa(param.gfa_post_construction_filename, param.print_gfa_seq);
   raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
