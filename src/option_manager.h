@@ -12,7 +12,7 @@ struct Program_Parameters {
 
   std::uint8_t kmer_len = 31;
   std::uint8_t window_len = 17;
-  std::uint16_t bandwidth = 500;
+  std::uint16_t bandwidth = 5000;
   std::uint16_t chain_n = 4;
   std::uint16_t match_n = 100;
   std::uint16_t gap_size = 10000;

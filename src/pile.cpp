@@ -61,6 +61,38 @@ namespace raven {
     }
   }
 
+  void Pile::AddExtendedLayers(
+      std::vector<biosoup::Overlap>::const_iterator begin,
+      std::vector<biosoup::Overlap>::const_iterator end) {
+    if (begin >= end) {
+      return;
+    }
+
+    std::vector<std::uint32_t> boundaries;
+    for (auto it = begin; it != end; ++it) {
+      if (it->lhs_id == id_) {
+        boundaries.emplace_back(((it->lhs_begin >> kPSS) + 1) << 1);
+        boundaries.emplace_back(((it->lhs_end >> kPSS) - 1) << 1 | 1);
+      } else if (it->rhs_id == id_) {
+        boundaries.emplace_back(((it->rhs_begin >> kPSS) + 1) << 1);
+        boundaries.emplace_back(((it->rhs_end >> kPSS) - 1) << 1 | 1);
+      }
+    }
+    std::sort(boundaries.begin(), boundaries.end());
+
+    std::uint32_t coverage = 0;
+    std::uint32_t last_boundary = 0;
+    for (const auto &it: boundaries) {
+      if (coverage > 0) {
+        for (std::uint32_t i = last_boundary; i < (it >> 1); ++i) {
+          data_[i] = clamp(data_[i] + coverage);
+        }
+      }
+      last_boundary = it >> 1;
+      coverage += it & 1 ? -1 : 1;
+    }
+  }  
+
   void Pile::AddKmers(
       const std::vector<std::uint32_t> &kmers,
       std::uint32_t kmer_len,

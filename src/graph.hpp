@@ -26,6 +26,7 @@
 #include "node.h"
 #include "edge.h"
 #include "marked_edge.h"
+#include "extended_overlap.h"
 
 namespace raven {
   constexpr std::uint8_t use_frequencies = 0;
@@ -96,7 +97,7 @@ namespace raven {
     void PrintGfa(const std::string &path, const bool print_seq) const;
 
     // print overlaps in PAF file format
-    void PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps,
+    void PrintOverlaps(std::vector<std::vector<extended_overlap>> overlaps,
                        std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, bool print_cigar,
                        const std::string &path) const;
 

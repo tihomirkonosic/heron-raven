@@ -11,6 +11,7 @@
 #include "cereal/archives/binary.hpp"
 #include "cereal/archives/json.hpp"
 #include "marked_edge.h"
+#include "extended_overlap.h"
 
 namespace raven {
 
@@ -676,7 +677,7 @@ namespace raven {
     os.close();
   }
 
-  void Graph::PrintOverlaps(std::vector<std::vector<biosoup::Overlap>> overlaps,
+  void Graph::PrintOverlaps(std::vector<std::vector<extended_overlap>> overlaps,
                             std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, bool print_cigar,
                             const std::string &path) const {
     if (path.empty()) {
@@ -687,19 +688,20 @@ namespace raven {
 
     for (const auto &it: overlaps) {
       for (const auto &jt: it) {
-        os << sequences[jt.lhs_id]->name
-           << "\t" << sequences[jt.lhs_id]->inflated_len  // length
-           << "\t" << jt.lhs_begin
-           << "\t" << jt.lhs_end
-           << "\t" << (jt.strand ? "+" : "-")
-           << "\t" << sequences[jt.rhs_id]->name
-           << "\t" << sequences[jt.rhs_id]->inflated_len  // length
-           << "\t" << jt.rhs_begin
-           << "\t" << jt.rhs_end
-           << "\t" << 0 // residue matches
-           << "\t" << 0 // alignment block length
-           << "\t" << 255
-           << "\t" << "cg:" << (print_cigar ? jt.alignment : "0")
+        os << sequences[jt.overlap.lhs_id]->name
+           << "\t" << sequences[jt.overlap.lhs_id]->inflated_len  // length
+           << "\t" << jt.overlap.lhs_begin
+           << "\t" << jt.overlap.lhs_end
+           << "\t" << (jt.overlap.strand ? "+" : "-")
+           << "\t" << sequences[jt.overlap.rhs_id]->name
+           << "\t" << sequences[jt.overlap.rhs_id]->inflated_len  // length
+           << "\t" << jt.overlap.rhs_begin
+           << "\t" << jt.overlap.rhs_end
+           << "\t" << jt.edlib_alignment.matches // residue matches
+           << "\t" << jt.edlib_alignment.block_length // alignment block length
+           << "\t" << jt.overlap.score
+           << "\t" << "cg:" << (print_cigar ? jt.edlib_alignment.cigar : "0")
+           << "\t" << "ed:" << jt.edlib_alignment.edit_distance
            << std::endl;
       }
     }

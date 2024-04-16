@@ -14,6 +14,7 @@
 #include "cereal/access.hpp"
 #include "cereal/types/vector.hpp"
 #include "cereal/types/utility.hpp"
+#include "extended_overlap.h"
 
 namespace raven {
 
@@ -93,6 +94,10 @@ namespace raven {
     void AddLayers(
         std::vector<biosoup::Overlap>::const_iterator begin,
         std::vector<biosoup::Overlap>::const_iterator end);
+
+    void AddExtendedLayers(
+      std::vector<extended_overlap>::const_iterator begin,
+      std::vector<extended_overlap>::const_iterator end);
 
     // mark repetitive k-mers
     void AddKmers(
