@@ -32,7 +32,8 @@ namespace raven {
       double freq,
 			bool hpc,
       bool paf,
-      std::uint16_t valid_region_treshold) {
+      std::uint16_t valid_region_length_threshold,
+      std::uint16_t valid_region_coverage_threshold) {
 
     disagreement_ = disagreement;
 
@@ -638,28 +639,28 @@ namespace raven {
             void_futures.emplace_back(thread_pool_->Submit(
                 [&](std::uint32_t i) -> void {
 
-                  graph_.piles_[i]->AddLayers(
-                      overlaps[i].begin() + num_overlaps[i],
-                      overlaps[i].end());
+                  graph_.piles_[i]->AddExtendedLayers(
+                      extended_overlaps[i].begin() + num_overlaps[i],
+                      extended_overlaps[i].end());
 
                   num_overlaps[i] = std::min(
-                      overlaps[i].size(),
+                      extended_overlaps[i].size(),
                       kMaxNumOverlaps);
 
-                  if (overlaps[i].size() < kMaxNumOverlaps) {
+                  if (extended_overlaps[i].size() < kMaxNumOverlaps) {
                     return;
                   }
 
-                  std::sort(overlaps[i].begin(), overlaps[i].end(),
-                            [&](const biosoup::Overlap &lhs,
-                                const biosoup::Overlap &rhs) -> bool {
-                              return overlap_length(lhs) > overlap_length(rhs);
+                  std::sort(extended_overlaps[i].begin(), extended_overlaps[i].end(),
+                            [&](const extended_overlap &lhs,
+                                const extended_overlap &rhs) -> bool {
+                              return overlap_length(lhs.overlap) > overlap_length(rhs.overlap);
                             });
 
-                  std::vector<biosoup::Overlap> tmp;
-                  tmp.insert(tmp.end(), overlaps[i].begin(),
-                             overlaps[i].begin() + kMaxNumOverlaps);  // NOLINT
-                  tmp.swap(overlaps[i]);
+                  std::vector<extended_overlap> tmp;
+                  tmp.insert(tmp.end(), extended_overlaps[i].begin(),
+                             extended_overlaps[i].begin() + kMaxNumOverlaps);  // NOLINT
+                  tmp.swap(extended_overlaps[i]);
                 },
                 it->id()));
           }
@@ -717,6 +718,17 @@ namespace raven {
 
       };
 
+    std::ofstream outdata;
+    outdata.open("piles.csv");
+    for(int i = 0; i < graph_.piles_.size(); i++){
+      outdata << graph_.piles_[i]->id() << ",";
+      std::vector<std::uint16_t> coverages = graph_.piles_[i]->get_data();
+      for(auto &element: coverages){
+        outdata << element << ";";
+      }
+      outdata << std::endl;
+
+    }
       exit(0);
 
     }
@@ -733,9 +745,9 @@ namespace raven {
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->Submit(
             [&](std::uint32_t i) -> void {
-              graph_.piles_[i]->FindValidRegion(valid_region_treshold);
+              graph_.piles_[i]->FindValidRegion(valid_region_coverage_threshold, valid_region_length_threshold);
               if (graph_.piles_[i]->is_invalid()) {
-                std::vector<biosoup::Overlap>().swap(overlaps[i]);
+                std::vector<extended_overlap>().swap(extended_overlaps[i]);
               } else {
                 graph_.piles_[i]->FindMedian();
                 graph_.piles_[i]->FindChimericRegions();

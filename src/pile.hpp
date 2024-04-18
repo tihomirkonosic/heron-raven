@@ -34,6 +34,10 @@ namespace raven {
 
     ~Pile() = default;
 
+    std::vector<std::uint16_t> get_data() const {
+      return data_;
+    }
+
     std::uint32_t id() const {
       return id_;
     }
@@ -106,7 +110,7 @@ namespace raven {
         const std::unique_ptr<biosoup::NucleicAcid> &sequence);
 
     // store longest region with values greater or equal than given coverage
-    void FindValidRegion(std::uint16_t coverage);
+    void FindValidRegion(std::uint16_t coverage, std::uint16_t length);
 
     // fill valid region with zeroes
     void ClearValidRegion();

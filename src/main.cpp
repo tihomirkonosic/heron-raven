@@ -81,7 +81,7 @@ int main(int argc, char **argv) {
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!param.skip_contruction){
     std::cout << "Constructing graph with params: kmer_size:" << param.kmer_len  << " winodw_size:" << param.window_len << " " << std::endl;
-    graph_constructor.Construct(sequences, param.disagreement, param.split, param.max_overlaps, param.ploidy, param.kmer_len, param.window_len, param.bandwidth, param.chain_n, param.match_n, param.gap_size, param.freq, param.hpc, param.paf, param.valid_region_size);
+    graph_constructor.Construct(sequences, param.disagreement, param.split, param.max_overlaps, param.ploidy, param.kmer_len, param.window_len, param.bandwidth, param.chain_n, param.match_n, param.gap_size, param.freq, param.hpc, param.paf, param.valid_region_length, param.valid_region_coverage);
   } else {
     graph_constructor.LoadFromGfa(param.input_gfa_path);
   }

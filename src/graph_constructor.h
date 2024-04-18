@@ -32,7 +32,8 @@ namespace raven {
         double freq = 0.001,
 				bool hpc = false,
         bool paf = false,
-        std::uint16_t valid_region_treshold = 4);
+        std::uint16_t valid_region_length_threshold = 1260,
+        std::uint16_t valid_region_coverage_threshold = 4);
 
     void LoadFromGfa(const std::string &gfa_path);
   private:

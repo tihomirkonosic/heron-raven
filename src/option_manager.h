@@ -39,7 +39,8 @@ struct Program_Parameters {
 
   std::size_t max_overlaps = 16;
   std::uint32_t min_unitig_size = 9999;
-  std::uint16_t valid_region_size = 4;
+  std::uint16_t valid_region_length = 1260;
+  std::uint16_t valid_region_coverage = 4;
   bool paf = false;
   bool print_gfa_seq = false;
 

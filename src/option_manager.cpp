@@ -28,7 +28,8 @@ enum program_opt {
 
   opt_max_overlaps,
   opt_disagreement,
-  opt_valid_region,
+  opt_valid_region_length,
+  opt_valid_region_coverage,
   opt_cleaning_rounds,
   opt_min_unitig_size,
   opt_ploidy,
@@ -62,7 +63,8 @@ static struct option options[] = {
 
     {"max-overlaps", required_argument, nullptr, opt_max_overlaps},
     {"disagreement", required_argument, nullptr, opt_disagreement},
-    {"valid-region", required_argument, nullptr, opt_valid_region},
+    {"valid-region-length", required_argument, nullptr, opt_valid_region_length},
+    {"valid-region-coverage", required_argument, nullptr, opt_valid_region_coverage},
     {"cleaning-rounds", required_argument, nullptr, opt_cleaning_rounds},
     {"min-unitig-size", required_argument, nullptr, opt_min_unitig_size},
     {"ploidy", required_argument, nullptr, opt_ploidy},
@@ -149,7 +151,7 @@ void Help() {
             "      maximal percentage of different anntoated bases in overlaps\n"
             "    -R --valid-region <int>\n"
             "      default: 4\n"
-            "      overlap valid region size\n"
+            "      valid region minimal length\n"
             "    --cleaning-rounds <int>\n"
             "      default: 0\n"
             "      number of cleaning rounds\n"
@@ -254,9 +256,12 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
       case 'D':
         param.disagreement = std::atof(optarg);
         break;
-      case opt_valid_region:
+      case opt_valid_region_length:
       case 'R':
-        param.valid_region_size = std::atoi(optarg);
+        param.valid_region_length = std::atoi(optarg);
+        break;
+      case opt_valid_region_coverage:
+        param.valid_region_coverage = std::atoi(optarg);
         break;
       case opt_cleaning_rounds:
         break;
