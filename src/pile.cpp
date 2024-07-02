@@ -70,19 +70,12 @@ namespace raven {
 
     std::vector<std::uint32_t> boundaries;
     for (auto it = begin; it != end; ++it) {
-      // if (it->overlap.lhs_id == id_) {
-      //   boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS) + 1) << 1);
-      //   boundaries.emplace_back(((it->overlap.lhs_end >> kPSS) - 1) << 1 | 1);
-      // } else if (it->overlap.rhs_id == id_) {
-      //   boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS) + 1) << 1);
-      //   boundaries.emplace_back(((it->overlap.rhs_end >> kPSS) - 1) << 1 | 1);
-      // }
       if(it->overlap.lhs_id == id_) {
-        boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS)) << 1);
-        boundaries.emplace_back(((it->overlap.lhs_end >> kPSS)) << 1 | 1);
+        boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS) + 1) << 1);
+        boundaries.emplace_back(((it->overlap.lhs_end >> kPSS) - 1) << 1 | 1);
       } else if (it->overlap.rhs_id == id_) {
-        boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS)) << 1);
-        boundaries.emplace_back(((it->overlap.rhs_end >> kPSS)) << 1 | 1);
+        boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS) + 1) << 1);
+        boundaries.emplace_back(((it->overlap.rhs_end >> kPSS) - 1) << 1 | 1);
       }
     }
     std::sort(boundaries.begin(), boundaries.end());
@@ -159,12 +152,14 @@ namespace raven {
   void Pile::FindValidRegion(std::uint16_t coverage_threshold, std::uint16_t length_threshold){
     std::uint32_t begin = 0;
     std::uint32_t end = 0;
+    bool any_above_th_flag = false;
     for (std::uint32_t i = begin_; i < end_; ++i) {
       if (data_[i] < coverage_threshold) {
         continue;
       }
       for (std::uint32_t j = i + 1; j < end_; ++j) {
         if (data_[j] >= coverage_threshold) {
+          any_above_th_flag = true;
           continue;
         }
         if (end - begin < j - i) {
@@ -179,7 +174,7 @@ namespace raven {
   }
 
   void Pile::UpdateValidRegion(std::uint32_t begin, std::uint32_t end) {
-    if (begin >= end || end - begin < 1260 >> kPSS) {
+    if (begin >= end || end - begin < 32 >> kPSS){
       set_is_invalid();
       return;
     }

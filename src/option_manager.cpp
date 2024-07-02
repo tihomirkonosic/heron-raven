@@ -5,6 +5,7 @@
 
 enum program_opt {
   opt_error_corrected_reads,
+  opt_herro_snps,
   opt_split,
   opt_graphical_fragment_assembly,
   opt_resume,
@@ -14,6 +15,7 @@ enum program_opt {
   opt_output,
   opt_input_gfa,
   opt_paf,
+  opt_load_paf,
   opt_print_gfa_seq,
 
   opt_kmer_len,
@@ -40,6 +42,7 @@ enum program_opt {
 
 static struct option options[] = {
     {"error-corrected-reads", required_argument, nullptr, opt_error_corrected_reads},
+    {"herro-snps", required_argument, nullptr, opt_herro_snps},
     {"split", required_argument, nullptr, opt_split},
     {"graphical-fragment-assembly", required_argument, nullptr, opt_graphical_fragment_assembly},
     {"resume", no_argument, nullptr, opt_resume},
@@ -49,6 +52,7 @@ static struct option options[] = {
     {"output", required_argument, nullptr, opt_output},
     {"input-gfa", required_argument, nullptr, opt_input_gfa},
     {"paf", no_argument, nullptr, opt_paf},
+    {"load-paf", required_argument, nullptr, opt_load_paf},
     {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
 
     {"kmer-len", required_argument, nullptr, opt_kmer_len},
@@ -90,6 +94,9 @@ void Help() {
             "    --error-corrected-reads <string>\n"
             "      default: \"\"\n"
             "      path to error corrected reads\n"
+            "    --herro-snps <string>\n"
+            "      default: \"\"\n"
+            "      path to herro snps\n"
             "    --split <int>\n"
             "      default: 0\n"
             "      graph coloring\n"
@@ -110,6 +117,8 @@ void Help() {
             "      input GFA file name, if it is set raven will skip construction phase\n"
             "    --paf\n"
             "      overlaps are stored to files in PAF format\n"
+            "    --load-paf <string>\n"
+            "      load overlaps from PAF files\n"
             "    --print-seq\n"
             "      print sequences in GFA file\n"
             "\n"
@@ -180,6 +189,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
       case opt_error_corrected_reads:
         param.error_corrected_reads = optarg;
         break;
+      case opt_herro_snps:
+        param.herro_snps = optarg;
+        break;
       case opt_split:
         param.split = std::atoi(optarg);
         break;
@@ -208,6 +220,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_paf:
         param.paf = true;
+        break;
+      case opt_load_paf:
+        param.load_paf = optarg;
         break;
       case opt_print_gfa_seq:
         param.print_gfa_seq = true;

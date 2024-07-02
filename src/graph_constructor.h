@@ -33,9 +33,13 @@ namespace raven {
 				bool hpc = false,
         bool paf = false,
         std::uint16_t valid_region_length_threshold = 1260,
-        std::uint16_t valid_region_coverage_threshold = 4);
+        std::uint16_t valid_region_coverage_threshold = 4,
+        std::string herro_snps_path = "",
+        std::string load_paf = "");
 
     void LoadFromGfa(const std::string &gfa_path);
+    void LoadHerroSNPs(const std::string &herro_snps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequencess);
+    void LoadOverlaps(const std::string &overlaps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, std::vector<std::vector<extended_overlap>> &extended_overlaps);
   private:
     Graph &graph_;
     std::shared_ptr<thread_pool::ThreadPool> thread_pool_;

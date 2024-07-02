@@ -10,22 +10,24 @@ struct Program_Parameters {
 
   std::uint8_t ploidy = 2;
 
-  std::uint8_t kmer_len = 31;
-  std::uint8_t window_len = 17;
-  std::uint16_t bandwidth = 5000;
-  std::uint16_t chain_n = 4;
-  std::uint16_t match_n = 100;
+  std::uint8_t kmer_len = 15;
+  std::uint8_t window_len = 7;
+  std::uint16_t bandwidth = 500;
+  std::uint16_t chain_n = 3;
+  std::uint16_t match_n = 75;
   std::uint16_t gap_size = 10000;
   double freq = 0.001;
   bool hpc = false;
 
   std::string error_corrected_reads = "";
+  std::string herro_snps = "";
+  std::string load_paf = "";
 
   std::int32_t num_polishing_rounds = 0;
 
   std::string ul_read_path;
 
-  double disagreement = 0.1;
+  double disagreement = 0.01;
   std::string gfa_path = "";
   std::string input_gfa_path = "";
   bool skip_contruction = false;
