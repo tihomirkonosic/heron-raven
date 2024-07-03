@@ -873,7 +873,6 @@ namespace raven {
               std::uint32_t k = 0;
               for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
                 if (!overlap_update(extended_overlaps[i][j].overlap)) {
-                  std::cerr << "Overlap update failed" << std::endl;
                   continue;
                 }
 
