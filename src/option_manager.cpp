@@ -6,6 +6,7 @@
 
 enum program_opt {
   opt_error_corrected_reads,
+  opt_herro_snps,
   opt_split,
   opt_graphical_fragment_assembly,
   opt_resume,
@@ -16,6 +17,7 @@ enum program_opt {
   opt_input_gfa,
   opt_input_paf,
   opt_paf,
+  opt_load_paf,
   opt_print_gfa_seq,
 
   opt_kmer_len,
@@ -30,7 +32,8 @@ enum program_opt {
 
   opt_max_overlaps,
   opt_disagreement,
-  opt_valid_region,
+  opt_valid_region_length,
+  opt_valid_region_coverage,
   opt_cleaning_rounds,
   opt_min_unitig_size,
   opt_ploidy,
@@ -41,6 +44,7 @@ enum program_opt {
 
 static struct option options[] = {
     {"error-corrected-reads", required_argument, nullptr, opt_error_corrected_reads},
+    {"herro-snps", required_argument, nullptr, opt_herro_snps},
     {"split", required_argument, nullptr, opt_split},
     {"graphical-fragment-assembly", required_argument, nullptr, opt_graphical_fragment_assembly},
     {"resume", no_argument, nullptr, opt_resume},
@@ -51,6 +55,7 @@ static struct option options[] = {
     {"input-gfa", required_argument, nullptr, opt_input_gfa},
     {"input-paf", required_argument, nullptr, opt_input_paf},
     {"paf", no_argument, nullptr, opt_paf},
+    {"load-paf", required_argument, nullptr, opt_load_paf},
     {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
 
     {"kmer-len", required_argument, nullptr, opt_kmer_len},
@@ -65,7 +70,8 @@ static struct option options[] = {
 
     {"max-overlaps", required_argument, nullptr, opt_max_overlaps},
     {"disagreement", required_argument, nullptr, opt_disagreement},
-    {"valid-region", required_argument, nullptr, opt_valid_region},
+    {"valid-region-length", required_argument, nullptr, opt_valid_region_length},
+    {"valid-region-coverage", required_argument, nullptr, opt_valid_region_coverage},
     {"cleaning-rounds", required_argument, nullptr, opt_cleaning_rounds},
     {"min-unitig-size", required_argument, nullptr, opt_min_unitig_size},
     {"ploidy", required_argument, nullptr, opt_ploidy},
@@ -91,6 +97,9 @@ void Help() {
             "    --error-corrected-reads <string>\n"
             "      default: \"\"\n"
             "      path to error corrected reads\n"
+            "    --herro-snps <string>\n"
+            "      default: \"\"\n"
+            "      path to herro snps\n"
             "    --split <int>\n"
             "      default: 0\n"
             "      graph coloring\n"
@@ -113,15 +122,17 @@ void Help() {
             "      input PAF file name, if it is set raven will load overlaps from PAF file\n"
             "    --paf\n"
             "      overlaps are stored to files in PAF format\n"
+            "    --load-paf <string>\n"
+            "      load overlaps from PAF files\n"
             "    --print-seq\n"
             "      print sequences in GFA file\n"
             "\n"
             "  Overlap:\n"
             "    -K, --kmer-len <int>\n"
-            "      default: 15\n"
+            "      default: 51\n"
             "      length of minimizers used to find overlaps\n"
             "    -W, --window-len <int>\n"
-            "      default: 5\n"
+            "      default: 30\n"
             "      length of sliding window from which minimizers are sampled\n"
             "    -F, --frequency <double>\n"
             "      default: 0.001\n"
@@ -154,7 +165,7 @@ void Help() {
             "      maximal percentage of different anntoated bases in overlaps\n"
             "    -R --valid-region <int>\n"
             "      default: 4\n"
-            "      overlap valid region size\n"
+            "      valid region minimal length\n"
             "    --cleaning-rounds <int>\n"
             "      default: 0\n"
             "      number of cleaning rounds\n"
@@ -178,11 +189,13 @@ void Help() {
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
   int arg;
-
   while ((arg = getopt_long(argc, argv, optstr.c_str(), options, nullptr)) != -1) {  // NOLINT
     switch (arg) {
       case opt_error_corrected_reads:
         param.error_corrected_reads = optarg;
+        break;
+      case opt_herro_snps:
+        param.herro_snps = optarg;
         break;
       case opt_split:
         param.split = std::atoi(optarg);
@@ -242,6 +255,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
       case opt_paf:
         param.paf = true;
         break;
+      case opt_load_paf:
+        param.load_paf = optarg;
+        break;
       case opt_print_gfa_seq:
         param.print_gfa_seq = true;
         break;
@@ -289,9 +305,12 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
       case 'D':
         param.disagreement = std::atof(optarg);
         break;
-      case opt_valid_region:
+      case opt_valid_region_length:
       case 'R':
-        param.valid_region_size = std::atoi(optarg);
+        param.valid_region_length = std::atoi(optarg);
+        break;
+      case opt_valid_region_coverage:
+        param.valid_region_coverage = std::atoi(optarg);
         break;
       case opt_cleaning_rounds:
         break;
@@ -317,7 +336,7 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
     return 0;
   }
 
-  if (optind >= argc && !param.skip_loading_fasta) {
+  if (optind >= argc && !param.skip_contruction) {
     std::cerr << "[raven::] error: missing input file!" << std::endl;
     return 0;
   }

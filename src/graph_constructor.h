@@ -23,6 +23,8 @@ namespace raven {
         Program_Parameters &param);
 
     void LoadFromGfa(const std::string &gfa_path);
+    void LoadHerroSNPs(const std::string &herro_snps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequencess);
+    void LoadOverlaps(const std::string &overlaps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, std::vector<std::vector<extended_overlap>> &extended_overlaps);
     void LoadFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, const std::string &paf_path);
   private:
     Graph &graph_;

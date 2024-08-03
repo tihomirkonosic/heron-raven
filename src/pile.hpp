@@ -14,6 +14,7 @@
 #include "cereal/access.hpp"
 #include "cereal/types/vector.hpp"
 #include "cereal/types/utility.hpp"
+#include "extended_overlap.h"
 
 namespace raven {
 
@@ -32,6 +33,10 @@ namespace raven {
     Pile &operator=(Pile &&) = default;
 
     ~Pile() = default;
+
+    std::vector<std::uint16_t> get_data() const {
+      return data_;
+    }
 
     std::uint32_t id() const {
       return id_;
@@ -94,6 +99,10 @@ namespace raven {
         std::vector<biosoup::Overlap>::const_iterator begin,
         std::vector<biosoup::Overlap>::const_iterator end);
 
+    void AddExtendedLayers(
+      std::vector<extended_overlap>::const_iterator begin,
+      std::vector<extended_overlap>::const_iterator end);
+
     // mark repetitive k-mers
     void AddKmers(
         const std::vector<std::uint32_t> &kmers,
@@ -101,7 +110,7 @@ namespace raven {
         const std::unique_ptr<biosoup::NucleicAcid> &sequence);
 
     // store longest region with values greater or equal than given coverage
-    void FindValidRegion(std::uint16_t coverage);
+    void FindValidRegion(std::uint16_t coverage, std::uint16_t length);
 
     // fill valid region with zeroes
     void ClearValidRegion();

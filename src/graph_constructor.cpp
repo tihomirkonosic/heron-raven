@@ -4,11 +4,10 @@
 #include <fstream>
 #include "graph.hpp"
 #include "graph_constructor.h"
-#include "overlap.h"
-#include "overlap_parser.h"
 #include "biosoup/overlap.hpp"
-#include "biosoup/timer.hpp"
 #include "edlib.h"
+#include "biosoup/timer.hpp"
+#include "extended_overlap.h"
 
 namespace raven {
   Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
@@ -29,7 +28,7 @@ namespace raven {
     }
 
     std::vector<std::vector<biosoup::Overlap>> overlaps(sequences.size());
-
+    std::vector<std::vector<extended_overlap>> extended_overlaps(sequences.size());
 //region biosoup::Overlap helper functions
 
     auto edlib_alignment_reverse = [](const std::string &s) -> std::string {
@@ -141,6 +140,22 @@ namespace raven {
           o.strand);
     };
 
+    auto cigar_extended_overlap_reverse = [&cigar_alignment_reverse](const extended_overlap &eo) -> extended_overlap {
+      return extended_overlap{
+          biosoup::Overlap(
+              eo.overlap.rhs_id, eo.overlap.rhs_begin, eo.overlap.rhs_end,
+              eo.overlap.lhs_id, eo.overlap.lhs_begin, eo.overlap.lhs_end,
+              eo.overlap.score,
+              eo.overlap.strand),
+          edlib_align{
+              eo.edlib_alignment.matches,
+              eo.edlib_alignment.block_length,
+              cigar_alignment_reverse(eo.edlib_alignment.cigar),
+              eo.edlib_alignment.edit_distance
+          }
+      };
+    };
+
     auto overlap_length = [](const biosoup::Overlap &o) -> std::uint32_t {
       return std::max(o.rhs_end - o.rhs_begin, o.lhs_end - o.lhs_begin);
     };
@@ -206,6 +221,18 @@ namespace raven {
       o.rhs_end = rhs_end;
 
       return true;
+    };
+
+    auto extend_overlap = [&] (biosoup::Overlap &o) -> std::uint32_t {
+      std::uint32_t start_offset = std::min(o.lhs_begin, o.rhs_begin);
+      std::uint32_t end_offset = std::min(sequences[o.lhs_id]->inflated_len - o.lhs_end,
+                                          sequences[o.rhs_id]->inflated_len - o.rhs_end);
+
+      
+      o.lhs_begin = o.lhs_begin - start_offset;
+      o.lhs_end = o.lhs_end + end_offset;
+      o.rhs_begin = o.rhs_begin - start_offset;
+      o.rhs_end = o.rhs_end + end_offset;
     };
 
     auto overlap_type = [&](const biosoup::Overlap &o) -> std::uint32_t {
@@ -321,40 +348,64 @@ namespace raven {
         std::uint32_t i,
         const biosoup::Overlap &it,
         const std::string &lhs,
-        const std::string &rhs) -> std::string {
-      std::string cigar_alignment = "";
+        const std::string &rhs) -> edlib_align {
+      edlib_align alignment_result;
       EdlibAlignResult result = edlibAlign(
           lhs.c_str(), lhs.size(),
           rhs.c_str(), rhs.size(),
           edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0)); // align lhs and rhs
       if (result.status == EDLIB_STATUS_OK) {
-        cigar_alignment = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_EXTENDED);
-        edlibFreeAlignResult(result);
-        return cigar_alignment;
+        alignment_result.cigar = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_EXTENDED);
+        alignment_result.edit_distance = result.editDistance;
+        alignment_result.block_length= result.alignmentLength;
+        alignment_result.matches = 0;
+        for (int i = 0; i < result.alignmentLength; i++) {
+          if (result.alignment[i] == 0) {
+            ++alignment_result.matches;
+          }
+        }
+        return alignment_result;
       } else {
         edlibFreeAlignResult(result);
-        std::string cigar_alignment = "";
-        return cigar_alignment;
+        alignment_result.cigar = "";
+        alignment_result.matches = 0;
+        alignment_result.edit_distance = -1;
+        alignment_result.block_length = 0;
+        return alignment_result;
       }
     };
 
-    auto call_snps = [&](std::uint32_t i, std::vector<biosoup::Overlap> ovlps_final) -> void {
+    auto find_pairwise_alignment = [&](std::uint32_t i, std::vector<extended_overlap> &ovlps) -> void {
+      for(auto &it : ovlps){
+
+        std::string lhs = sequences[i]->InflateData(it.overlap.lhs_begin, it.overlap.lhs_end - it.overlap.lhs_begin);
+        biosoup::NucleicAcid rhs_{"",
+                          sequences[it.overlap.rhs_id]->InflateData(it.overlap.rhs_begin, it.overlap.rhs_end - it.overlap.rhs_begin)};
+                                                              
+        if (!it.overlap.strand) rhs_.ReverseAndComplement();
+
+        auto rhs = rhs_.InflateData();
+
+        it.edlib_alignment = edlib_wrapper(i, it.overlap, lhs, rhs);
+      }
+    };
+
+    auto call_snps = [&](std::uint32_t i, std::vector<extended_overlap> ovlps_final) -> void {
       std::uint32_t seq_inflated_len = sequences[i]->inflated_len;
       std::vector<base_pile> base_pile_tmp(seq_inflated_len);
       std::vector<std::uint32_t> cov;
 
       for (auto &ovlp: ovlps_final) {
-        if (!(ovlp.alignment.empty())) {
-          std::uint32_t lhs_pos = ovlp.lhs_begin;
+        if (!(ovlp.edlib_alignment.cigar.empty())) {
+          std::uint32_t lhs_pos = ovlp.overlap.lhs_begin;
           std::uint32_t rhs_pos = 0;
           biosoup::NucleicAcid rhs{"",
-                                   sequences[ovlp.rhs_id]->InflateData(ovlp.rhs_begin,
-                                                                       ovlp.rhs_end - ovlp.rhs_begin)};
-          if (!ovlp.strand) rhs.ReverseAndComplement();
+                                   sequences[ovlp.overlap.rhs_id]->InflateData(ovlp.overlap.rhs_begin,
+                                                                       ovlp.overlap.rhs_end - ovlp.overlap.rhs_begin)};
+          if (!ovlp.overlap.strand) rhs.ReverseAndComplement();
           std::string rhs_tmp = rhs.InflateData();
 
-          std::string edlib_alignment = cigar_to_edlib_alignment(ovlp.alignment);
-
+          std::string edlib_alignment = cigar_to_edlib_alignment(ovlp.edlib_alignment.cigar);
           for (auto &edlib_align: edlib_alignment) {
             switch (edlib_align) {
               case 0:
@@ -489,6 +540,60 @@ namespace raven {
       for (const auto &it: sequences) {
         graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
       }
+      
+      if(!load_paf.empty()){
+        LoadOverlaps(load_paf, sequences, extended_overlaps);
+        std::vector<std::future<void>> void_futures;
+        for(int i = 0; i < sequences.size(); i++){
+          void_futures.emplace_back(thread_pool_->Submit(
+              [&](std::uint32_t i) -> void {
+                find_pairwise_alignment(i, extended_overlaps[i]);
+              },
+              i));
+        };
+        for (const auto &it: void_futures) {
+          it.wait();
+        }
+
+        void_futures.clear();
+
+        
+        std::vector<std::future<void>> extended_layers_futures;
+        std::uint16_t counter = 0;
+        for (const auto &it: graph_.piles_) {
+          counter += 1;
+          //std::cerr << counter << std::endl;
+          if (extended_overlaps[it->id()].empty()){
+                    continue;
+                  }
+          extended_layers_futures.emplace_back(thread_pool_->Submit(
+           [&](std::uint32_t i) -> void {
+              it->AddExtendedLayers(
+              extended_overlaps[it->id()].begin(),
+              extended_overlaps[it->id()].end());
+
+              // if (extended_overlaps[it->id()].size() < kMaxNumOverlaps) {
+              //   return;
+              // }
+
+              // std::sort(extended_overlaps[i].begin(), extended_overlaps[i].end(),
+              //           [&](const extended_overlap &lhs,
+              //               const extended_overlap &rhs) -> bool {
+              //             return overlap_length(lhs.overlap) > overlap_length(rhs.overlap);
+              //           });
+
+              // std::vector<extended_overlap> tmp;
+              // tmp.insert(tmp.end(), extended_overlaps[i].begin(),
+              //             extended_overlaps[i].begin() + kMaxNumOverlaps);  // NOLINT
+              // tmp.swap(extended_overlaps[i]);
+           },
+           it->id()));
+        }
+        for (const auto &it: extended_layers_futures) {
+          it.wait();
+        }
+      }
+       else {
       std::size_t bytes = 0;
       for (std::uint32_t i = 0, j = 0; i < sequences.size(); ++i) {
         bytes += sequences[i]->inflated_len;
@@ -517,15 +622,15 @@ namespace raven {
           num_overlaps[k] = overlaps[k].size();
         }
 
-        std::vector<std::future<std::vector<biosoup::Overlap>>> thread_futures;
+          std::vector<std::future<std::vector<extended_overlap>>> thread_futures;
 
         for (std::uint32_t k = 0; k < i + 1; ++k) {
           thread_futures.emplace_back(thread_pool_->Submit(
-              [&](std::uint32_t i) -> std::vector<biosoup::Overlap> { // map sequences and fill out the potential snp list
+                [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
                 std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
                                                                            true, param.hpc);
                 if (!ovlps.empty()) {
-                  std::vector<biosoup::Overlap> ovlps_final;
+                    std::vector<extended_overlap> ovlps_final;
 
                   std::sort(ovlps.begin(), ovlps.end(),
                             [&](const biosoup::Overlap &lhs,
@@ -533,38 +638,48 @@ namespace raven {
                               return overlap_length(lhs) > overlap_length(rhs);
                             });
 
-                  std::vector<biosoup::Overlap> tmp;
-                  tmp.insert(tmp.end(), ovlps.begin(),
-                             ovlps.begin() + (ovlps.size() > 24 ? 24 : ovlps.size()));  // NOLINT
-                  tmp.swap(ovlps);
 
-                  for (const auto &ovlp: ovlps) {
-                    auto lhs = sequences[i]->InflateData(ovlp.lhs_begin,
-                                                         ovlp.lhs_end - ovlp.lhs_begin);
+                  std::vector<biosoup::Overlap> tmp;
+                    // tmp.insert(tmp.end(), ovlps.begin(),
+                    //            ovlps.begin() + (ovlps.size() > 120 ? 120 : ovlps.size()));  // NOLINT // factor in coverage
+                    // tmp.swap(ovlps);
+
+                    for (auto &ovlp: ovlps) {
+                    if(overlap_length(ovlp) > 500){
+                        ovlp.lhs_begin = ovlp.lhs_begin - (window_len+kmer_len-1) ? ovlp.lhs_begin - (window_len+kmer_len-1) : 0;
+                        ovlp.lhs_end = ovlp.lhs_end + (window_len+kmer_len-1) < sequences[ovlp.lhs_id]->inflated_len ? ovlp.lhs_end + (window_len+kmer_len-1) : sequences[ovlp.lhs_id]->inflated_len;
+
+                        ovlp.rhs_begin = ovlp.rhs_begin - (window_len+kmer_len-1) ? ovlp.rhs_begin - (window_len+kmer_len-1) : 0;
+                        ovlp.rhs_end = ovlp.rhs_end + (window_len+kmer_len-1) < sequences[ovlp.rhs_id]->inflated_len ? ovlp.rhs_end + (window_len+kmer_len-1) : sequences[ovlp.rhs_id]->inflated_len;
+
+                        auto lhs = sequences[i]->InflateData(ovlp.lhs_begin, ovlp.lhs_end - ovlp.lhs_begin);
+                                                            
                     biosoup::NucleicAcid rhs_{"",
-                                              sequences[ovlp.rhs_id]->InflateData(ovlp.rhs_begin,
-                                                                                  ovlp.rhs_end -
-                                                                                  ovlp.rhs_begin)};
+                                                  sequences[ovlp.rhs_id]->InflateData(ovlp.rhs_begin, ovlp.rhs_end - ovlp.rhs_begin)};
+                                                                                      
 
                     if (!ovlp.strand) rhs_.ReverseAndComplement();
 
                     auto rhs = rhs_.InflateData();
 
-                    std::string tmp = edlib_wrapper(i, ovlp, lhs, rhs);
 
+                        edlib_align tmp = edlib_wrapper(i, ovlp, lhs, rhs);
+                        if(static_cast<float>(tmp.matches) / tmp.block_length > 0.9){
+                         // edlib_align tmp;
                     biosoup::Overlap ovlp_tmp{ovlp.lhs_id, ovlp.lhs_begin, ovlp.lhs_end,
-                                              ovlp.rhs_id, ovlp.rhs_begin,
-                                              ovlp.rhs_end, ovlp.score, tmp, ovlp.strand};
-                    ovlps_final.emplace_back(ovlp_tmp);
+                                                    ovlp.rhs_id, ovlp.rhs_begin, ovlp.rhs_end, 
+                                                    ovlp.score, ovlp.strand};
 
-                  };
-
-									if(param.ploidy >= 2){
-										call_snps(i, ovlps_final);
+                          extended_overlap total_ovlp{ovlp_tmp, tmp};
+                          ovlps_final.emplace_back(total_ovlp);
 									}
+                  }
+
+                    };
                   return ovlps_final;
                 }
-                return ovlps;
+                  std::vector<extended_overlap> total_ovlps;
+                  return total_ovlps;
               },
               k));
 
@@ -576,50 +691,55 @@ namespace raven {
 
           for (auto &it: thread_futures) {
             for (const auto &jt: it.get()) {
-              overlaps[jt.lhs_id].emplace_back(jt);
-              overlaps[jt.rhs_id].emplace_back(cigar_overlap_reverse(jt));
+                extended_overlaps[jt.overlap.lhs_id].emplace_back(jt);
+                //overlaps.emplace_back(jt.overlap);
+                extended_overlaps[jt.overlap.rhs_id].emplace_back(cigar_extended_overlap_reverse(jt));
+                //overlaps.emplace_back(overlap_reverse(jt.overlap));
             }
           }
           thread_futures.clear();
+          }
 
           std::vector<std::future<void>> void_futures;
           for (const auto &it: graph_.piles_) {
-            if (overlaps[it->id()].empty() ||
-                overlaps[it->id()].size() == num_overlaps[it->id()]) {
+          if (extended_overlaps[it->id()].empty()            
+              || extended_overlaps[it->id()].size() == num_overlaps[it->id()]
+              ){
               continue;
             }
 
             void_futures.emplace_back(thread_pool_->Submit(
                 [&](std::uint32_t i) -> void {
-                  graph_.piles_[i]->AddLayers(
-                      overlaps[i].begin() + num_overlaps[i],
-                      overlaps[i].end());
 
-                  num_overlaps[i] = std::min(
-                      overlaps[i].size(),
-                      param.max_overlaps);
+                graph_.piles_[i]->AddExtendedLayers(
+                    extended_overlaps[i].begin(),
+                    extended_overlaps[i].end());
 
-                  if (overlaps[i].size() < param.max_overlaps) {
-                    return;
-                  }
+                // num_overlaps[i] = std::min(
+                //     extended_overlaps[i].size(),
+                //     kMaxNumOverlaps);
 
-                  std::sort(overlaps[i].begin(), overlaps[i].end(),
-                            [&](const biosoup::Overlap &lhs,
-                                const biosoup::Overlap &rhs) -> bool {
-                              return overlap_length(lhs) > overlap_length(rhs);
-                            });
+                // if (extended_overlaps[i].size() < kMaxNumOverlaps) {
+                //   return;
+                // }
 
-                  std::vector<biosoup::Overlap> tmp;
-                  tmp.insert(tmp.end(), overlaps[i].begin(),
-                             overlaps[i].begin() + param.max_overlaps);  // NOLINT
-                  tmp.swap(overlaps[i]);
+                // std::sort(extended_overlaps[i].begin(), extended_overlaps[i].end(),
+                //           [&](const extended_overlap &lhs,
+                //               const extended_overlap &rhs) -> bool {
+                //             return overlap_length(lhs.overlap) > overlap_length(rhs.overlap);
+                //           });
+
+                // std::vector<extended_overlap> tmp;
+                // tmp.insert(tmp.end(), extended_overlaps[i].begin(),
+                //             extended_overlaps[i].begin() + kMaxNumOverlaps);  // NOLINT
+                // tmp.swap(extended_overlaps[i]);
                 },
                 it->id()));
           }
           for (const auto &it: void_futures) {
             it.wait();
           }
-        }
+      
 
 
         std::cerr << "[raven::Graph::Construct] mapped sequences "
@@ -628,8 +748,31 @@ namespace raven {
 
         j = i + 1;
       }
+    }
+    }
 
-      if (print_snp_data && param.ploidy >= 2) {
+      graph_.PrintOverlaps(extended_overlaps, sequences, true, "initial.paf");
+      std::cerr << "[raven::Graph::Construct] initial overlaps printed"
+               << std::endl;
+
+    if(herro_snps_path == ""){
+      std::vector<std::future<void>> void_futures;
+      for(int i = 0; i < sequences.size(); i++){
+        void_futures.emplace_back(thread_pool_->Submit(
+            [&](std::uint32_t i) -> void {
+              call_snps(i, extended_overlaps[i]);
+            },
+            i));
+      };
+
+      for (const auto &it: void_futures) {
+        it.wait();
+      }
+    
+      std::cerr << "[raven::Graph::Construct] snps called"
+                << std::endl;
+
+      if (print_snp_data && ploidy >= 2) {
         std::ofstream outdata;
         outdata.open("snp_annotations.anno");
 
@@ -637,7 +780,7 @@ namespace raven {
           if (graph_.annotations_[i].empty()) {
             continue;
           }
-          outdata << i;
+          outdata << sequences[i]->name << " ";
           for (const auto &jt: graph_.annotations_[i]) {
             outdata << " " << jt;
           }
@@ -645,24 +788,48 @@ namespace raven {
         }
 
       };
+    } else {
+      std::cerr << "Loading snps" << std::endl;
+      LoadHerroSNPs(herro_snps_path, sequences);
+      std::ofstream outdata;
+      outdata.open("snp_annotations_check.anno");
+      for (std::uint32_t i = 0; i < graph_.annotations_.size(); ++i) {
+        if (graph_.annotations_[i].empty()) {
+          continue;
+        }
+        outdata << sequences[i]->name << " ";
+        for (const auto &jt: graph_.annotations_[i]) {
+          outdata << " " << jt;
+        }
+        outdata << std::endl;
+      }
+    };
+
+    std::ofstream outdata;
+    outdata.open("piles.csv");
+    for(int i = 0; i < graph_.piles_.size(); i++){
+      outdata << graph_.piles_[i]->id() << ",";
+      std::vector<std::uint16_t> coverages = graph_.piles_[i]->get_data();
+      for(auto &element: coverages){
+        outdata << element << ";";
+    }
+      outdata << std::endl;
 
     }
 
-    if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_snp_filename);
-    }
+    graph_.PrintOverlaps(extended_overlaps, sequences, true, "beforeValidRegion.paf");
 
     // trim and annotate piles
     if (graph_.stage() == Graph_Stage::Construct_Graph) {
       timer.Start();
-
       std::vector<std::future<void>> thread_futures;
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->Submit(
             [&](std::uint32_t i) -> void {
-              graph_.piles_[i]->FindValidRegion(param.valid_region_size);
+              graph_.piles_[i]->FindValidRegion(valid_region_coverage_threshold, valid_region_length_threshold);
               if (graph_.piles_[i]->is_invalid()) {
-                std::vector<biosoup::Overlap>().swap(overlaps[i]);
+                std::vector<extended_overlap>().swap(extended_overlaps[i]);
+                
               } else {
                 graph_.piles_[i]->FindMedian();
                 graph_.piles_[i]->FindChimericRegions();
@@ -684,38 +851,38 @@ namespace raven {
     if (graph_.stage() == Graph_Stage::Construct_Graph) {
       timer.Start();
       std::vector<std::future<void>> futures;
-      for (std::uint32_t i = 0; i < overlaps.size(); ++i) {
+      for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
         futures.emplace_back(thread_pool_->Submit(
             [&](std::uint32_t i) -> void {
               std::uint32_t k = 0;
-              for (std::uint32_t j = 0; j < overlaps[i].size(); ++j) {
-                if (!overlap_update(overlaps[i][j])) {
+              for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
+                if (!overlap_update(extended_overlaps[i][j].overlap)) {
                   continue;
                 }
 
-                const auto &it = overlaps[i][j];
+                const auto &it = extended_overlaps[i][j];
 
                 auto lhs_anno = annotation_extract(
-                    it.lhs_id,
-                    it.lhs_begin,
-                    it.lhs_end,
-                    sequences[it.lhs_id]->inflated_len,
+                    it.overlap.lhs_id,
+                    it.overlap.lhs_begin,
+                    it.overlap.lhs_end,
+                    sequences[it.overlap.lhs_id]->inflated_len,
                     true);
 
                 auto rhs_anno = annotation_extract(
-                    it.rhs_id,
-                    it.rhs_begin,
-                    it.rhs_end,
-                    sequences[it.rhs_id]->inflated_len,
-                    it.strand);
+                    it.overlap.rhs_id,
+                    it.overlap.rhs_begin,
+                    it.overlap.rhs_end,
+                    sequences[it.overlap.rhs_id]->inflated_len,
+                    it.overlap.strand);
 
                 if (!lhs_anno.empty() || !rhs_anno.empty()) {
                   //std::vector<std::pair<char, int>> cigar = parse_cigar_string(it.alignment);
-                  std::string edlib_alignment = cigar_to_edlib_alignment(it.alignment);
-                  std::uint32_t lhs_pos = it.lhs_begin;
-                  std::uint32_t rhs_pos = it.strand ?
-                                          it.rhs_begin :
-                                          sequences[it.rhs_id]->inflated_len - it.rhs_end;
+                  std::string edlib_alignment = cigar_to_edlib_alignment(it.edlib_alignment.cigar);
+                  std::uint32_t lhs_pos = it.overlap.lhs_begin;
+                  std::uint32_t rhs_pos = it.overlap.strand ?
+                                          it.overlap.rhs_begin :
+                                          sequences[it.overlap.rhs_id]->inflated_len - it.overlap.rhs_end;
 
                   std::uint32_t mismatches = 0;
                   std::uint32_t snps = 0;
@@ -751,18 +918,19 @@ namespace raven {
                   if (mismatches / static_cast<double>(snps) > disagreement_) {
                     continue;
                   }
-                  // }
                 }
 
-                overlaps[i][k++] = overlaps[i][j];
+                extended_overlaps[i][k++] = extended_overlaps[i][j];
               }
-              overlaps[i].resize(k);
+              extended_overlaps[i].resize(k);
             },
             i));
       }
       for (const auto &it: futures) {
         it.wait();
       }
+      futures.clear();
+      graph_.PrintOverlaps(extended_overlaps, sequences, true, "afterSnps.paf");
 
       for (std::uint32_t i = 0; i < overlaps.size(); ++i) {
         std::uint32_t k = 0;
@@ -795,9 +963,7 @@ namespace raven {
                 << std::endl;
     }
 
-    if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_contained_filename);
-    }
+    graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_contained_filename);
 
     // resolve chimeric sequences
     if (graph_.stage() == Graph_Stage::Construct_Graph) {
@@ -869,9 +1035,6 @@ namespace raven {
                 << std::endl;
     }
 
-    if (param.paf == true) {
-      graph_.PrintOverlaps(overlaps, sequences, false, param.paf_after_chimeric_filename);
-    }
 
     // checkpoint
     if (graph_.stage() == Graph_Stage::Construct_Graph) {
@@ -1269,6 +1432,106 @@ namespace raven {
               << std::fixed << timer.elapsed_time() << "s"
               << std::endl;
   }
+
+  void Graph_Constructor::LoadOverlaps(const std::string &overlaps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, std::vector<std::vector<extended_overlap>> &extended_overlaps){
+    std::ifstream file(overlaps_path);
+    if (!file.is_open()) {
+      throw std::runtime_error("Error opening file: " + overlaps_path);
+    }
+    
+    auto reverse_hifiasm_overlap = [](const extended_overlap &eo) -> extended_overlap {
+      return extended_overlap{
+        biosoup::Overlap(
+              eo.overlap.rhs_id, eo.overlap.rhs_begin, eo.overlap.rhs_end,
+              eo.overlap.lhs_id, eo.overlap.lhs_begin, eo.overlap.lhs_end,
+              eo.overlap.score,
+              eo.overlap.strand),
+        edlib_align{}
+      };
+    };
+    
+    auto get_read_id = [](const std::string &read_name, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences) -> std::uint32_t {
+      for (const auto &it: sequences) {
+        if (it->name == read_name) {
+          return it->id;
+        }
+      }
+      return -1;
+    };
+
+    std::cerr << "[raven::Graph::LoadHerroSNPs] loading overlaps from: " << overlaps_path << std::endl;
+    std::string line;
+    while(std::getline(file, line)){
+      std::istringstream iss(line);
+      std::string item;
+      std::vector<std::string> items;
+      std::uint32_t lhs_seq_id;
+      std::uint32_t rhs_seq_id;
+
+      while(std::getline(iss, item, '\t')){
+        items.push_back(item);
+      };
+
+      lhs_seq_id = get_read_id(items[0], sequences);
+      rhs_seq_id = get_read_id(items[5], sequences);
+
+      if(lhs_seq_id == -1 || rhs_seq_id == -1){
+        continue;
+      } else {
+        biosoup::Overlap overlap{lhs_seq_id, std::stoi(items[2]), std::stoi(items[3]), 
+                                  rhs_seq_id, std::stoi(items[7]), std::stoi(items[8]), 
+                                  255, items[4] == "+"};
+        edlib_align tmp = {};
+        extended_overlap total_ovlp{overlap, tmp};
+        extended_overlaps[lhs_seq_id].emplace_back(total_ovlp);
+        //extended_overlaps[rhs_seq_id].emplace_back(reverse_hifiasm_overlap(total_ovlp));
+      }
+    };
+    std::cerr << "[raven::Graph::LoadHerroSNPs] loaded overlaps from: " << overlaps_path << std::endl;
+  };
+
+  void Graph_Constructor::LoadHerroSNPs(const std::string &herro_snps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences){
+    std::ifstream file(herro_snps_path);
+    if (!file.is_open()) {
+      throw std::runtime_error("Error opening file: " + herro_snps_path);
+    }
+
+    std::cerr << "[raven::Graph::LoadHerroSNPs] loading snps from: " << herro_snps_path << std::endl;
+    std::string line;
+    while(std::getline(file, line)){
+          std::string single_line = line;
+          std::istringstream iss(single_line);
+
+          std::string item;
+          std::string first_item;
+          bool is_first = true;
+          std::uint32_t seq_id;
+          bool found = false;
+
+
+          while (std::getline(iss, item, '\t')) {
+            if (is_first) {
+              first_item = item;
+              is_first = false;
+              for(auto &read : sequences){
+
+                if(read.get()->name == first_item){
+                  seq_id = read.get()->id;
+                  found = true;
+                  break;
+                }
+              }
+              continue;
+              } else if(found){
+                std::uint32_t pos = std::stoi(item);
+                graph_.annotations_[seq_id].emplace(pos);
+              }
+
+          }
+    };
+
+
+  };
 
 
   void Graph_Constructor::LoadFromGfa(const std::string &gfa_path){
