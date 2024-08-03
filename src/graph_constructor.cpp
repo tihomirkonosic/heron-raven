@@ -4,6 +4,8 @@
 #include <fstream>
 #include "graph.hpp"
 #include "graph_constructor.h"
+#include "overlap.h"
+#include "overlap_parser.h"
 #include "biosoup/overlap.hpp"
 #include "edlib.h"
 #include "biosoup/timer.hpp"
@@ -541,8 +543,8 @@ namespace raven {
         graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
       }
       
-      if(!load_paf.empty()){
-        LoadOverlaps(load_paf, sequences, extended_overlaps);
+      if(!param.load_paf.empty()){
+        LoadOverlaps(param.load_paf, sequences, extended_overlaps);
         std::vector<std::future<void>> void_futures;
         for(int i = 0; i < sequences.size(); i++){
           void_futures.emplace_back(thread_pool_->Submit(
@@ -646,11 +648,11 @@ namespace raven {
 
                     for (auto &ovlp: ovlps) {
                     if(overlap_length(ovlp) > 500){
-                        ovlp.lhs_begin = ovlp.lhs_begin - (window_len+kmer_len-1) ? ovlp.lhs_begin - (window_len+kmer_len-1) : 0;
-                        ovlp.lhs_end = ovlp.lhs_end + (window_len+kmer_len-1) < sequences[ovlp.lhs_id]->inflated_len ? ovlp.lhs_end + (window_len+kmer_len-1) : sequences[ovlp.lhs_id]->inflated_len;
+                        ovlp.lhs_begin = ovlp.lhs_begin - (param.window_len+param.kmer_len-1) ? ovlp.lhs_begin - (param.window_len+param.kmer_len-1) : 0;
+                        ovlp.lhs_end = ovlp.lhs_end + (param.window_len+param.kmer_len-1) < sequences[ovlp.lhs_id]->inflated_len ? ovlp.lhs_end + (param.window_len+param.kmer_len-1) : sequences[ovlp.lhs_id]->inflated_len;
 
-                        ovlp.rhs_begin = ovlp.rhs_begin - (window_len+kmer_len-1) ? ovlp.rhs_begin - (window_len+kmer_len-1) : 0;
-                        ovlp.rhs_end = ovlp.rhs_end + (window_len+kmer_len-1) < sequences[ovlp.rhs_id]->inflated_len ? ovlp.rhs_end + (window_len+kmer_len-1) : sequences[ovlp.rhs_id]->inflated_len;
+                        ovlp.rhs_begin = ovlp.rhs_begin - (param.window_len+param.kmer_len-1) ? ovlp.rhs_begin - (param.window_len+param.kmer_len-1) : 0;
+                        ovlp.rhs_end = ovlp.rhs_end + (param.window_len+param.kmer_len-1) < sequences[ovlp.rhs_id]->inflated_len ? ovlp.rhs_end + (param.window_len+param.kmer_len-1) : sequences[ovlp.rhs_id]->inflated_len;
 
                         auto lhs = sequences[i]->InflateData(ovlp.lhs_begin, ovlp.lhs_end - ovlp.lhs_begin);
                                                             
@@ -755,7 +757,7 @@ namespace raven {
       std::cerr << "[raven::Graph::Construct] initial overlaps printed"
                << std::endl;
 
-    if(herro_snps_path == ""){
+    if(param.herro_snps_path == ""){
       std::vector<std::future<void>> void_futures;
       for(int i = 0; i < sequences.size(); i++){
         void_futures.emplace_back(thread_pool_->Submit(
@@ -772,7 +774,7 @@ namespace raven {
       std::cerr << "[raven::Graph::Construct] snps called"
                 << std::endl;
 
-      if (print_snp_data && ploidy >= 2) {
+      if (print_snp_data && param.ploidy >= 2) {
         std::ofstream outdata;
         outdata.open("snp_annotations.anno");
 
@@ -790,7 +792,7 @@ namespace raven {
       };
     } else {
       std::cerr << "Loading snps" << std::endl;
-      LoadHerroSNPs(herro_snps_path, sequences);
+      LoadHerroSNPs(param.herro_snps_path, sequences);
       std::ofstream outdata;
       outdata.open("snp_annotations_check.anno");
       for (std::uint32_t i = 0; i < graph_.annotations_.size(); ++i) {
@@ -826,7 +828,7 @@ namespace raven {
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
         thread_futures.emplace_back(thread_pool_->Submit(
             [&](std::uint32_t i) -> void {
-              graph_.piles_[i]->FindValidRegion(valid_region_coverage_threshold, valid_region_length_threshold);
+              graph_.piles_[i]->FindValidRegion(param.valid_region_coverage_threshold, param.valid_region_length_threshold);
               if (graph_.piles_[i]->is_invalid()) {
                 std::vector<extended_overlap>().swap(extended_overlaps[i]);
                 

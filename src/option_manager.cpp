@@ -195,7 +195,7 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         param.error_corrected_reads = optarg;
         break;
       case opt_herro_snps:
-        param.herro_snps = optarg;
+        param.herro_snps_path = optarg;
         break;
       case opt_split:
         param.split = std::atoi(optarg);
@@ -307,10 +307,10 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_valid_region_length:
       case 'R':
-        param.valid_region_length = std::atoi(optarg);
+        param.valid_region_length_threshold = std::atoi(optarg);
         break;
       case opt_valid_region_coverage:
-        param.valid_region_coverage = std::atoi(optarg);
+        param.valid_region_coverage_threshold = std::atoi(optarg);
         break;
       case opt_cleaning_rounds:
         break;

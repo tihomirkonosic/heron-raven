@@ -20,7 +20,7 @@ struct Program_Parameters {
   bool hpc = false;
 
   std::string error_corrected_reads = "";
-  std::string herro_snps = "";
+  std::string herro_snps_path = "";
   std::string load_paf = "";
 
   std::int32_t num_polishing_rounds = 0;
@@ -37,12 +37,9 @@ struct Program_Parameters {
 
   std::string root_path{"out/raven"};
 
-  std::string gfa_path = "";
   bool load_input_gfa = false;
-  std::string input_gfa_path = "";
   bool load_input_paf = false;
   std::string input_paf_path = "";
-  std::string ul_read_path;
   std::string sequence_path;
 
   std::string gfa_after_construction_filename {"after_construction.gfa"};
@@ -63,12 +60,10 @@ struct Program_Parameters {
 
   std::size_t max_overlaps = 16;
   std::uint32_t min_unitig_size = 9999;
-  std::uint16_t valid_region_length = 1260;
-  std::uint16_t valid_region_coverage = 4;
+  std::uint16_t valid_region_length_threshold = 1260;
+  std::uint16_t valid_region_coverage_threshold = 4;
   bool paf = false;
   bool print_gfa_seq = false;
-
-  std::string sequence_path;
 };
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param);
