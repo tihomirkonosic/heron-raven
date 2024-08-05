@@ -16,5 +16,6 @@ CMakeFiles/
 
 *.txt
 cmake*
+!CMakeLists.txt
 
 Makefile
