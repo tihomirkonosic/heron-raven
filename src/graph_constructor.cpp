@@ -1480,8 +1480,8 @@ namespace raven {
       if(lhs_seq_id == -1 || rhs_seq_id == -1){
         continue;
       } else {
-        biosoup::Overlap overlap{lhs_seq_id, std::stoi(items[2]), std::stoi(items[3]), 
-                                  rhs_seq_id, std::stoi(items[7]), std::stoi(items[8]), 
+        biosoup::Overlap overlap{lhs_seq_id, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]),
+                                  rhs_seq_id, (std::uint32_t)std::stoi(items[7]), (std::uint32_t)std::stoi(items[8]),
                                   255, items[4] == "+"};
         edlib_align tmp = {};
         extended_overlap total_ovlp{overlap, tmp};
