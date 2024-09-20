@@ -9,6 +9,8 @@
 #include "biosoup/timer.hpp"
 #include "extended_overlap.h"
 
+#define STOP_AFTER_PILES 1
+
 namespace raven {
   Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
       : graph_(graph), thread_pool_(thread_pool ?
@@ -832,6 +834,10 @@ namespace raven {
       outdata << std::endl;
 
     }
+
+    if(STOP_AFTER_PILES == 1){
+      exit(0);
+    }
     
     graph_.PrintOverlaps(extended_overlaps, sequences, true, "beforeValidRegion.paf");
 
@@ -862,6 +868,18 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
     }
+
+    // std::ofstream outdata;
+    // outdata.open("piles.csv");
+    // for(int i = 0; i < graph_.piles_.size(); i++){
+    //   outdata << graph_.piles_[i]->id() << ",";
+    //   std::vector<std::uint16_t> coverages = graph_.piles_[i]->get_data();
+    //   for(auto &element: coverages){
+    //     outdata << element << ";";
+    //   }
+    //   outdata << std::endl;
+
+    // }
 
     // resolve contained reads
     if (graph_.stage() == Graph_Stage::Construct_Graph) {
