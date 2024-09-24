@@ -11,9 +11,9 @@
 #include "graph_constructor.h"
 #include "graph_assembler.h"
 #include "parser.h"
+#include "polymer_manager.h"
 
 std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};
-
 
 int main(int argc, char **argv) {
 
@@ -21,8 +21,6 @@ int main(int argc, char **argv) {
 
   if (!ProcessParameters(argc, argv, param))
     return 0;
-
-
 
   raven::min_unitig_size = param.min_unitig_size;
 
@@ -73,114 +71,28 @@ int main(int argc, char **argv) {
     std::cerr << "[raven::] loaded " << sequences.size() << " sequences "
             << std::fixed << timer.Stop() << "s"
             << std::endl;
-    } else {
-      std::cerr << "[raven::] skipped sequence loading" << std::endl;
-    }
-    timer.Start();
+  } else {
+    std::cerr << "[raven::] skipped sequence loading" << std::endl;
+  }
 
+  timer.Start();
+
+  if (param.compress_homopolymers) {
     std::vector<biosoup::NucleicAcid> sequences2{sequences.size()};
-    auto compress_homopolymers = [](biosoup::NucleicAcid &read){
-      std::string sequence = read.InflateData();
-      std::string new_sequence = "";
-      std::size_t seq_ptr = 0;
-      seq_ptr += 1;
-      std::size_t diamer_ptr = 0;
-      diamer_ptr += 3;
-      std::uint32_t repeat_count = 1;
-      std::uint32_t direpeat_count = 1;
-      std::vector<std::pair<std::size_t, std::size_t>> homopolymer_positions;
-      std::vector<std::pair<std::size_t, std::size_t>> diamer_positions;
-      std::size_t current_index = 0;
-      std::string tmp = "";
 
-      for(diamer_ptr; diamer_ptr<sequence.size();){
-          tmp = sequence[diamer_ptr];
-          if(sequence[diamer_ptr] == sequence[diamer_ptr-2] && sequence[diamer_ptr-1] == sequence[diamer_ptr-3] && !(sequence[diamer_ptr] == sequence[diamer_ptr-1])){
-              repeat_count++;
-              diamer_ptr+=2;
-          }else{
-              if(repeat_count > 1){
-                  diamer_positions.emplace_back(diamer_ptr-(2*repeat_count) - 1, diamer_ptr-2);
-              }
-              repeat_count = 1;
-              diamer_ptr+=1;
-          }
-      }
-
-      if(repeat_count > 1){
-          diamer_positions.emplace_back(diamer_ptr-(2*repeat_count) - 1, diamer_ptr-2);
-      }
-
-      std::vector<std::pair<std::size_t, std::size_t>> new_diamer_pos;
-      for(auto &positions : diamer_positions){
-          new_sequence.append(sequence.substr(current_index, positions.first - current_index + 1));
-          new_diamer_pos.emplace_back(new_sequence.size() - 1, new_sequence.size());
-          current_index = positions.second;
-      }
-      if(current_index < sequence.size()){
-        new_sequence.append(sequence.substr(current_index));
-      }
-
-      current_index = 0;
-      sequence = "";
-      std::size_t diamer_index = 0;
-      repeat_count = 1;
-      std::string tmp_2 = "";
-      for(seq_ptr; seq_ptr < new_sequence.size();){
-        tmp_2 = new_sequence[seq_ptr];
-          if(new_sequence[seq_ptr] == new_sequence[seq_ptr-1] && (seq_ptr-1 != new_diamer_pos[diamer_index].second) && seq_ptr != new_diamer_pos[diamer_index].first){
-              repeat_count++;
-              seq_ptr++;
-          }else if (seq_ptr == new_diamer_pos[diamer_index].first){
-                if(diamer_index < new_diamer_pos.size()-1) diamer_index++;
-                if(repeat_count > 1) homopolymer_positions.emplace_back(seq_ptr-repeat_count, seq_ptr-1);
-                repeat_count = 1;
-                seq_ptr += 3;
-               
-          }else if(seq_ptr == new_diamer_pos[diamer_index].second){
-                if(diamer_index < new_diamer_pos.size()-1) diamer_index++;
-                seq_ptr+=2;
-                repeat_count = 1;
-          }else {
-            if(repeat_count > 1){
-                  homopolymer_positions.emplace_back(seq_ptr-repeat_count, seq_ptr-1);
-            }
-            repeat_count = 1;
-            seq_ptr++;
-          }
-      }
-      
-      if(repeat_count > 1){
-          homopolymer_positions.emplace_back(seq_ptr-repeat_count+1, seq_ptr-1);
-      }
-      
-      std::vector<std::pair<std::size_t, std::size_t>> new_homopolymer_pos;
-      std::vector<std::size_t> diamer_pos_final;
-      current_index = 0;
-      for(auto &positions : homopolymer_positions){
-          sequence.append(new_sequence.substr(current_index, positions.first - current_index + 1));
-          new_homopolymer_pos.emplace_back(sequence.size() - 1, sequence.size());
-          current_index = positions.second + 1;
-      }
-      if(current_index < new_sequence.size()){
-        sequence.append(new_sequence.substr(current_index));
-      }
-      return biosoup::NucleicAcid(read.name, sequence);
-    };
-
-    for(std::uint32_t i = 0; i < sequences.size(); i++){
+    for (std::uint32_t i = 0; i < sequences.size(); i++) {
       sequences2[i] = compress_homopolymers(*sequences[i]);
     }
 
+    // raven::Extended_reads compressed_reads{sequences, thread_pool};
 
-  // raven::Extended_reads compressed_reads{sequences, thread_pool};
-
-  std::ofstream os("compressed_reads.fasta");
-  for(auto &it: sequences2){
-    os << ">" << it.name << std::endl;
-    os << it.InflateData() << std::endl;
+    std::ofstream os("compressed_reads.fasta");
+    for (auto &it : sequences2) {
+      os << ">" << it.name << std::endl;
+      os << it.InflateData() << std::endl;
+    }
+    exit(0);
   }
-  exit(0);
 
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!param.skip_contruction){
@@ -195,8 +107,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-
   graph.PrintGfa(param.gfa_post_construction_filename, param.print_gfa_seq);
+
   raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
   if (!param.ul_read_path.empty()){

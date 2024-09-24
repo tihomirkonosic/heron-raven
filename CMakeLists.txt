@@ -137,6 +137,7 @@ add_library(raven
   src/graph_assembler.cpp
   src/option_manager.cpp
   src/overlap_parser.cpp
+  src/polymer_manager.cpp
   #src/extended_overlap.cpp
   #src/read_preprocessing.cpp
 )

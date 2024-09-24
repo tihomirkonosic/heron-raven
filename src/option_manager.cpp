@@ -39,7 +39,9 @@ enum program_opt {
   opt_ploidy,
 
   opt_ultralong_phasing,
-  opt_polishing_rounds
+  opt_polishing_rounds,
+
+  opt_compress_homopolymers
 };
 
 static struct option options[] = {
@@ -78,6 +80,8 @@ static struct option options[] = {
 
     {"ultralong-phasing", required_argument, nullptr, opt_ultralong_phasing},
     {"polishing-rounds", required_argument, nullptr, opt_polishing_rounds},
+
+    {"compress-homopolymers", no_argument, nullptr, opt_compress_homopolymers},
 
     {nullptr, 0, nullptr, 0}
 };
@@ -183,7 +187,12 @@ void Help() {
             "  Consensus:\n"
             "    --polishing-rounds <int>\n"
             "      default: 0\n"
-            "      number of times racon is invoked\n";
+            "      number of times racon is invoked\n"
+            "\n"
+            "  Other:\n"
+            "    --compress-homopolymers <int>\n"
+            "      default: false\n"
+            "      compress homopolymers, whatever that means\n";
 
 }
 
@@ -325,6 +334,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_polishing_rounds:
         param.num_polishing_rounds = atoi(optarg);
+        break;
+      case opt_compress_homopolymers:
+        param.compress_homopolymers = true;
         break;
       default:
         return 1;
