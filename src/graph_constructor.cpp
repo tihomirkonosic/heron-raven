@@ -1538,14 +1538,14 @@ namespace raven {
 
   void Graph_Constructor::LoadFromGfa(const std::string &gfa_path){
     try {
-        std::string gfa_path_without_leading_whitespace;
-        if (!gfa_path.empty()) {
-            gfa_path_without_leading_whitespace = gfa_path.substr(1);
-        }
-        std::ifstream file(gfa_path_without_leading_whitespace);
+//        std::string gfa_path_without_leading_whitespace;
+//        if (!gfa_path.empty()) {
+//            gfa_path_without_leading_whitespace = gfa_path.substr(1);
+//        }
+        std::ifstream file(gfa_path);
 
         if (!file.is_open()) {
-            throw std::runtime_error("Error opening file: " + gfa_path_without_leading_whitespace);
+            throw std::runtime_error("Error opening file: " + gfa_path);
         }
 
         std::string line;
@@ -1605,11 +1605,11 @@ namespace raven {
           }
         }
         if(file.eof()){
-          std::cerr << "[raven::Graph::LoadFromGfa] loaded sequences from: " << gfa_path_without_leading_whitespace << std::endl; 
+          std::cerr << "[raven::Graph::LoadFromGfa] loaded sequences from: " << gfa_path << std::endl;
         }
         //file.seekg(0, file.beg);
 
-        std::ifstream file2(gfa_path_without_leading_whitespace);
+        std::ifstream file2(gfa_path);
         
         while (std::getline(file2, line)) {
           // Process each line here
@@ -1629,7 +1629,7 @@ namespace raven {
           bool tail_node_strand;
           bool head_node_strand;
 
-          std::string edge_length;
+          //std::string edge_length;
           std::string item2;
           std::string ol_length;
 
@@ -1653,19 +1653,20 @@ namespace raven {
                 head_node_name = item;
               }else if(counter == 4){
                 head_node_strand = item == "+" ? true : false;
-              }else if(counter == 5){
+              }else if(counter == 5) {
                 std::stringstream ss(item);
-                while(std::getline(ss, item2 , 'M')){
+                while (std::getline(ss, item2, 'M')) {
                   ol_length = item2;
                 }
-              }else if(counter == 6){
-                std::uint8_t mini_counter = 0;
-                std::stringstream ss(item);
-                while(std::getline(ss, item2 , ':')){
-                  if(mini_counter == 2) edge_length = item2;
-                  mini_counter++;
-                }
               }
+//              }else if(counter == 6){
+//                std::uint8_t mini_counter = 0;
+//                std::stringstream ss(item);
+//                while(std::getline(ss, item2 , ':')){
+//                  if(mini_counter == 2) edge_length = item2;
+//                  mini_counter++;
+//                }
+//              }
             }
             counter++;
           }
@@ -1674,12 +1675,12 @@ namespace raven {
             auto tail_node = tail_node_strand ? sequence_to_node[tail_node_name].get() : sequence_to_node[tail_node_name]->pair;
             auto head_node = head_node_strand ? sequence_to_node[head_node_name].get() : sequence_to_node[head_node_name]->pair;
 
-            auto length = std::stoi(edge_length);
-            auto length_pair = head_node->sequence.inflated_len - std::stoi(ol_length);
+            //auto length = std::stoi(edge_length);
+            auto length = head_node->sequence.inflated_len - std::stoi(ol_length);
 
             auto edge = std::make_shared<Edge>(tail_node, head_node, length);
             graph_.edges_.emplace_back(edge);
-            graph_.edges_.emplace_back(std::make_shared<Edge>(head_node->pair, tail_node->pair, length_pair));  // NOLINT
+            graph_.edges_.emplace_back(std::make_shared<Edge>(head_node->pair, tail_node->pair, length));  // NOLINT
             edge->pair = graph_.edges_.back().get();
             edge->pair->pair = edge.get();
             
@@ -1690,9 +1691,9 @@ namespace raven {
       if (file.eof()) {
           // File has been read successfully
           file.close();
-          std::cerr << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path_without_leading_whitespace << std::endl;
+          std::cerr << "[raven::Graph::LoadFromGfa] successfully loaded graph from: " << gfa_path << std::endl;
       } else {
-          throw std::runtime_error("Error reading file: " + gfa_path_without_leading_whitespace);
+          throw std::runtime_error("Error reading file: " + gfa_path);
       }
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
