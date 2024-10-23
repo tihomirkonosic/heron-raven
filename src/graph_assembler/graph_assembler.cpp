@@ -36,87 +36,87 @@ namespace raven {
       graph_.PrintGfa(param_.gfa_after_transitive_filename, true);
     }
 
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
-      timer.Start();
-
-      //CreateUnitigGraph();
-
-      std::cerr << "[raven::Graph::Assemble] created bubble chain "
-                << std::fixed << timer.Stop() << "s"
-                << std::endl;
-
-      // PrintGfa("after_bubble_chain.gfa");
-    }
+//    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+//      timer.Start();
+//
+//      CreateUnitigGraph();
+//
+//      std::cerr << "[raven::Graph::Assemble] created bubble chain "
+//                << std::fixed << timer.Stop() << "s"
+//                << std::endl;
+//
+//      graph_.PrintGfa("after_bubble_chain.gfa");
+//    }
 
     // checkpoint
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
       graph_.advance_stage();
-      if (graph_.use_checkpoints()) {
-        timer.Start();
-        //Store();
-        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
-                  << std::fixed << timer.Stop() << "s"
-                  << std::endl;
-      }
+//      if (graph_.use_checkpoints()) {
+//        timer.Start();
+//        graph_.Store(param_.cereal_filename);
+//        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
+//                  << std::fixed << timer.Stop() << "s"
+//                  << std::endl;
+//      }
     }
 
     // remove tips and bubbles
-    if (graph_.stage() == Graph_Stage::Assemble_Tips_Bubbles) {
-      timer.Start();
-
-      while (true) {
-        std::uint32_t num_changes = RemoveTips();
-        num_changes += RemoveBubbles();
-        if (num_changes == 0) {
-          break;
-        }
-      }
-
-      std::cerr << "[raven::Graph::Assemble] removed tips and bubbles "
-                << std::fixed << timer.Stop() << "s"
-                << std::endl;
-
-      graph_.PrintGfa(param_.gfa_after_bubble_filename, false);
-    }
+//    if (graph_.stage() == Graph_Stage::Assemble_Tips_Bubbles) {
+//      timer.Start();
+//
+//      while (true) {
+//        std::uint32_t num_changes = RemoveTips();
+//        num_changes += RemoveBubbles();
+//        if (num_changes == 0) {
+//          break;
+//        }
+//      }
+//
+//      std::cerr << "[raven::Graph::Assemble] removed tips and bubbles "
+//                << std::fixed << timer.Stop() << "s"
+//                << std::endl;
+//
+//      graph_.PrintGfa(param_.gfa_after_bubble_filename, false);
+//    }
 
     // checkpoint
     if (graph_.stage() == Graph_Stage::Assemble_Tips_Bubbles) {
       graph_.advance_stage();
-      if (graph_.use_checkpoints()) {
-        timer.Start();
-        //Store();
-        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
-                  << std::fixed << timer.Stop() << "s"
-                  << std::endl;
-      }
+//      if (graph_.use_checkpoints()) {
+//        timer.Start();
+//        graph_.Store(param_.cereal_filename);
+//        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
+//                  << std::fixed << timer.Stop() << "s"
+//                  << std::endl;
+//      }
     }
 
     // remove long edges
-    if (graph_.stage() == Graph_Stage::Assemble_Force_Directed) {
-      timer.Start();
-
-      if (graph_.annotations_.empty()) {
-        graph_.CreateUnitigs(42);  // speed up force directed layout
-      }
-      RemoveLongEdges(16);
-
-      std::cerr << "[raven::Graph::Assemble] removed long edges "
-                << std::fixed << timer.Stop() << "s"
-                << std::endl;
-
-      graph_.PrintGfa(param_.gfa_after_force_filename, false);
-    }
+//    if (graph_.stage() == Graph_Stage::Assemble_Force_Directed) {
+//      timer.Start();
+//
+//      if (graph_.annotations_.empty()) {
+//        graph_.CreateUnitigs(42);  // speed up force directed layout
+//      }
+//      RemoveLongEdges(16);
+//
+//      std::cerr << "[raven::Graph::Assemble] removed long edges "
+//                << std::fixed << timer.Stop() << "s"
+//                << std::endl;
+//
+//      graph_.PrintGfa(param_.gfa_after_force_filename, false);
+//    }
 
     // checkpoint
     if (graph_.stage() == Graph_Stage::Assemble_Force_Directed) {
       graph_.advance_stage();
-      if (graph_.use_checkpoints()) {
-        timer.Start();
-        //Store();
-        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
-                  << std::fixed << timer.Stop() << "s"
-                  << std::endl;
-      }
+//      if (graph_.use_checkpoints()) {
+//        timer.Start();
+//        //Store();
+//        std::cerr << "[raven::Graph::Assemble] reached checkpoint "
+//                  << std::fixed << timer.Stop() << "s"
+//                  << std::endl;
+//      }
     }
 
     std::cerr << "[raven::Graph::Assemble] "
@@ -141,16 +141,18 @@ namespace raven {
     timer.Start();
 
     while (true) {
-      std::uint32_t num_changes = RemoveSnpBubbles();
-
+      std::uint32_t num_changes = RemoveTips();
+      num_changes += RemoveSnpBubbles();
       if (num_changes == 0) {
         break;
       }
     }
 
-    std::cerr << "[raven::Graph::AssembleDiploids] removed SNP bubbles "
+    std::cerr << "[raven::Graph::Assemble] removed tips and bubbles "
               << std::fixed << timer.Stop() << "s"
               << std::endl;
+
+    graph_.PrintGfa(param_.gfa_after_bubble_filename, false);
 
     timer.Start();
 

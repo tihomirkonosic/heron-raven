@@ -2,7 +2,7 @@
 
 #include "graph.hpp"
 #include "graph_constructor.h"
-#include "graph_assembler.h"
+#include "graph_assembler/graph_assembler.h"
 
 #include "bioparser/fasta_parser.hpp"
 #include "bioparser/fastq_parser.hpp"

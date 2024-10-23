@@ -134,13 +134,13 @@ add_library(raven
   src/edge.cpp
   src/parser.cpp
   src/graph_constructor/graph_constructor.cpp
-  src/graph_assembler.cpp
+  src/graph_assembler/graph_assembler.cpp
   src/option_manager.cpp
   src/overlap_parser.cpp
   src/polymer_manager.cpp
-  src/graph_assembler_transitive.cpp
-  src/graph_assembler_tips.cpp
-  src/graph_assembler_bubbles.cpp
+  src/graph_assembler/graph_assembler_transitive.cpp
+  src/graph_assembler/graph_assembler_tips.cpp
+  src/graph_assembler/graph_assembler_bubbles.cpp
   #src/extended_overlap.cpp
   #src/read_preprocessing.cpp
 )
