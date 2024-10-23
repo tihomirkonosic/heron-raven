@@ -131,10 +131,8 @@ namespace raven {
         }
       }
 
-      if (begin != end) {
-        data += end->sequence.InflateData();
-        count += end->count;
-      }
+      data += end->sequence.InflateData();
+      count += end->count;
     }
 
 
@@ -148,29 +146,29 @@ namespace raven {
         front_inedges.emplace_back(inedge);
         front_inedge_count++;
       }
-    };
+    }
 
     for (auto &outedge: begin->outedges) {
       if (std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()) {
         front_outedges.emplace_back(outedge);
         front_outedge_count++;
       }
-    };
+    }
 
     for (auto &inedge: end->inedges) {
       if (std::find(unitig_nodes.begin(), unitig_nodes.end(), inedge->tail) == unitig_nodes.end()) {
         back_inedges.emplace_back(inedge);
         back_inedge_count++;
-      };
-    };
+      }
+    }
 
 
     for (auto &outedge: end->outedges) {
       if (std::find(unitig_nodes.begin(), unitig_nodes.end(), outedge->head) == unitig_nodes.end()) {
         back_outedges.emplace_back(outedge);
         back_outedge_count++;
-      };
-    };
+      }
+    }
     sequence = biosoup::NucleicAcid(
         "Utg" + std::to_string(id & (~1UL)),
         data);
@@ -209,10 +207,8 @@ namespace raven {
         }
       }
 
-      if (begin != end) {
-        data += end->sequence.InflateData();
-        count += end->count;
-      }
+      data += end->sequence.InflateData();
+      count += end->count;
     }
 
 

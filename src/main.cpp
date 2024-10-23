@@ -8,7 +8,7 @@
 
 #include "option_manager.h"
 #include "graph.hpp"
-#include "graph_constructor.h"
+#include "graph_constructor/graph_constructor.h"
 #include "graph_assembler.h"
 #include "parser.h"
 #include "polymer_manager.h"

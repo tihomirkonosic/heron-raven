@@ -28,7 +28,7 @@ struct Program_Parameters {
   std::string ul_read_path;
 
   double disagreement = 0.01;
-  std::string gfa_path = "";
+  std::string gfa_path {"final.gfa"};
   std::string input_gfa_path = "";
   bool skip_contruction = false;
   bool skip_loading_fasta = false;

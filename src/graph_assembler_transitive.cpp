@@ -12,7 +12,7 @@ bool is_comparable(double a, double b) {
   double eps = 0.12;
   return (a >= b * (1 - eps) && a <= b * (1 + eps)) ||
       (b >= a * (1 - eps) && b <= a * (1 + eps));
-};
+}
 
 }
 

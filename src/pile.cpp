@@ -152,14 +152,12 @@ namespace raven {
   void Pile::FindValidRegion(std::uint16_t coverage_threshold, std::uint16_t length_threshold){
     std::uint32_t begin = 0;
     std::uint32_t end = 0;
-    bool any_above_th_flag = false;
     for (std::uint32_t i = begin_; i < end_; ++i) {
       if (data_[i] < coverage_threshold) {
         continue;
       }
       for (std::uint32_t j = i + 1; j < end_; ++j) {
         if (data_[j] >= coverage_threshold) {
-          any_above_th_flag = true;
           continue;
         }
         if (end - begin < j - i) {
