@@ -133,7 +133,7 @@ add_library(raven
   src/node.cpp
   src/edge.cpp
   src/parser.cpp
-  src/graph_constructor.cpp
+  src/graph_constructor/graph_constructor.cpp
   src/graph_assembler.cpp
   src/option_manager.cpp
   src/overlap_parser.cpp
