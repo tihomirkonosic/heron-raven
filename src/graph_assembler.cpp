@@ -31,7 +31,8 @@ namespace raven {
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
 
-      graph_.PrintGfa(param_.gfa_after_transitive_filename, true);
+      graph_.PrintGfa(param_.gfa_after_transitive_filename, false);
+      //exit(0);
     }
 
     if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {

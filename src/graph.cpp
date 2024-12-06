@@ -19,6 +19,7 @@ namespace raven {
       : nodes_(),
         edges_(),
         annotations_(),
+        annotations_compressed_(),
         piles_(),
         stage_(Graph_Stage::Construct_Graph),
         checkpoints_(checkpoints),
@@ -699,8 +700,14 @@ namespace raven {
            << "\t" << jt.edlib_alignment.matches // residue matches
            << "\t" << jt.edlib_alignment.block_length // alignment block length
            << "\t" << jt.overlap.score
-           << "\t" << "cg:" << (print_cigar ? jt.edlib_alignment.cigar : "0")
-           << "\t" << "ed:" << jt.edlib_alignment.edit_distance
+           << "\t" << "tp:A:P"
+           << "\t" << "mm:i:0"
+           << "\t" << "gn:i:0"
+           << "\t" << "go:i:0"
+           << "\t" << "cg:Z:" << (print_cigar ? jt.edlib_alignment.cigar : "0")
+           << "\t" << "snp:" << jt.total_overlap_snps
+           << "\t" << "snpmm:" << jt.total_overlap_snp_mismatches
+          // << "\t" << "ed:" << jt.edlib_alignment.edit_distance
            << std::endl;
       }
     }

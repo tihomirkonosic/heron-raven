@@ -71,11 +71,15 @@ namespace raven {
     std::vector<std::uint32_t> boundaries;
     for (auto it = begin; it != end; ++it) {
       if(it->overlap.lhs_id == id_) {
-        boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS) + 1) << 1);
-        boundaries.emplace_back(((it->overlap.lhs_end >> kPSS) - 1) << 1 | 1);
+        // boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS) + 1) << 1);
+        // boundaries.emplace_back(((it->overlap.lhs_end >> kPSS) - 1) << 1 | 1);
+        boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS)) << 1);
+        boundaries.emplace_back(((it->overlap.lhs_end >> kPSS)) << 1 | 1);        
       } else if (it->overlap.rhs_id == id_) {
-        boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS) + 1) << 1);
-        boundaries.emplace_back(((it->overlap.rhs_end >> kPSS) - 1) << 1 | 1);
+        // boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS) + 1) << 1);
+        // boundaries.emplace_back(((it->overlap.rhs_end >> kPSS) - 1) << 1 | 1);
+        boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS)) << 1);
+        boundaries.emplace_back(((it->overlap.rhs_end >> kPSS)) << 1 | 1);
       }
     }
     std::sort(boundaries.begin(), boundaries.end());
@@ -169,6 +173,9 @@ namespace raven {
         i = j;
         break;
       }
+    }
+    if(any_above_th_flag && end == 0){
+      end = end_;
     }
     UpdateValidRegion(begin, end);
   }
