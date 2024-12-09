@@ -11,7 +11,7 @@
 #include "cereal/archives/binary.hpp"
 #include "cereal/archives/json.hpp"
 #include "marked_edge.h"
-#include "extended_overlap.h"
+#include "graph_constructor/extended_overlap.h"
 
 namespace raven {
 

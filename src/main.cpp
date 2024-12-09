@@ -8,8 +8,8 @@
 
 #include "option_manager.h"
 #include "graph.hpp"
-#include "graph_constructor.h"
-#include "graph_assembler.h"
+#include "graph_constructor/graph_constructor.h"
+#include "graph_assembler/graph_assembler.h"
 #include "parser.h"
 
 std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};

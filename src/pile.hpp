@@ -14,7 +14,7 @@
 #include "cereal/access.hpp"
 #include "cereal/types/vector.hpp"
 #include "cereal/types/utility.hpp"
-#include "extended_overlap.h"
+#include "graph_constructor/extended_overlap.h"
 
 namespace raven {
 

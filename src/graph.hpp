@@ -26,7 +26,7 @@
 #include "node.h"
 #include "edge.h"
 #include "marked_edge.h"
-#include "extended_overlap.h"
+#include "graph_constructor/extended_overlap.h"
 #include "state_manager.h"
 
 namespace raven {
