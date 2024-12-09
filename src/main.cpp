@@ -22,8 +22,6 @@ int main(int argc, char **argv) {
   if (!ProcessParameters(argc, argv, param))
     return 0;
 
-
-
   raven::min_unitig_size = param.min_unitig_size;
 
   biosoup::Timer timer{};
@@ -73,12 +71,10 @@ int main(int argc, char **argv) {
     std::cerr << "[raven::] loaded " << sequences.size() << " sequences "
             << std::fixed << timer.Stop() << "s"
             << std::endl;
-    } else {
+  } else {
       std::cerr << "[raven::] skipped sequence loading" << std::endl;
-    }
-    timer.Start();
-
-
+  }
+  timer.Start();
 
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!param.skip_contruction){
@@ -92,7 +88,6 @@ int main(int argc, char **argv) {
     std::cerr << "[raven::] error: unknown option" << std::endl;
     return 1;
   }
-
 
   graph.PrintGfa(param.gfa_post_construction_filename, param.print_gfa_seq);
   raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
@@ -162,7 +157,7 @@ int main(int argc, char **argv) {
     outfile1.close();
     outfile2.close();
   }
-  else if(param.ploidy == 1){
+  else if(param.ploidy == 1) {
     std::filesystem::path path1 = param.root_path;
     path1 += ".fasta";
     std::ofstream outfile1;
