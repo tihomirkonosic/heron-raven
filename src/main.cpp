@@ -69,10 +69,11 @@ int main(int argc, char **argv) {
     std::cerr << "[raven::] loaded " << sequences.size() << " sequences "
             << std::fixed << timer.Stop() << "s"
             << std::endl;
+
+    timer.Start();
   } else {
       std::cerr << "[raven::] skipped sequence loading" << std::endl;
   }
-  timer.Start();
 
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
   if (!param.skip_contruction){
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
   }
 
   graph.PrintGfa(param.gfa_post_construction_filename, param.print_gfa_seq);
-  raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
+
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> ul_sequences;
   if (!param.ul_read_path.empty()){
     try {
@@ -105,20 +106,23 @@ int main(int argc, char **argv) {
       std::cerr << "[raven::] loaded " << ul_sequences.size() << " ul sequences "
                 << std::fixed << timer.Stop() << "s"
                 << std::endl;
+
+      timer.Start();
     }
   }
 
+  raven::Graph_Assembler graph_assembler{graph, param, thread_pool};
   if (ul_sequences.empty()) {
     graph_assembler.Assemble();
-    graph.PrintGfa(param.gfa_post_cleaning_filename, param.print_gfa_seq);
-    if(param.ploidy >= 2){
-      graph_assembler.AssembleDiploids();
-    } else {
-      graph_assembler.AssembleHaploids();
-    }
   } else {
-    timer.Start();
     graph_assembler.UlAssemble(ul_sequences);
+  }
+
+  graph.PrintGfa(param.gfa_post_cleaning_filename, param.print_gfa_seq);
+  if(param.ploidy >= 2){
+    graph_assembler.AssembleDiploids();
+  } else {
+    graph_assembler.AssembleHaploids();
   }
 
   graph.PrintGfa(param.gfa_path, param.print_gfa_seq);
