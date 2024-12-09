@@ -13,16 +13,14 @@ namespace raven {
   }
 
   void Graph_Assembler::Assemble() {
-    if (graph_.stage() != Graph_Stage::Assemble_Transitive_Edges
-        && graph_.stage() != Graph_Stage::Assemble_Tips_Bubbles
-        && graph_.stage() != Graph_Stage::Assemble_Force_Directed) {
+    if (!graph_.state_manager_.assemble_any_state()) {
       return;
     }
 
     biosoup::Timer timer{};
 
     // remove transitive edges
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
       timer.Start();
 
       RemoveTransitiveEdges();
@@ -35,7 +33,7 @@ namespace raven {
       //exit(0);
     }
 
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
       timer.Start();
 
       //CreateUnitigGraph();
@@ -48,8 +46,8 @@ namespace raven {
     }
 
     // checkpoint
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
-      graph_.advance_stage();
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
+      graph_.state_manager_.advance_state();
       if (graph_.use_checkpoints()) {
         timer.Start();
         //Store();
@@ -60,7 +58,7 @@ namespace raven {
     }
 
     // remove tips and bubbles
-    if (graph_.stage() == Graph_Stage::Assemble_Tips_Bubbles) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Tips_Bubbles) {
       timer.Start();
 
       while (true) {
@@ -79,8 +77,8 @@ namespace raven {
     }
 
     // checkpoint
-    if (graph_.stage() == Graph_Stage::Assemble_Tips_Bubbles) {
-      graph_.advance_stage();
+    if (graph_.state_manager_.state() == GraphState::Assemble_Tips_Bubbles) {
+      graph_.state_manager_.advance_state();
       if (graph_.use_checkpoints()) {
         timer.Start();
         //Store();
@@ -91,7 +89,7 @@ namespace raven {
     }
 
     // remove long edges
-    if (graph_.stage() == Graph_Stage::Assemble_Force_Directed) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Force_Directed) {
       timer.Start();
 
       if (graph_.annotations_.empty()) {
@@ -107,8 +105,8 @@ namespace raven {
     }
 
     // checkpoint
-    if (graph_.stage() == Graph_Stage::Assemble_Force_Directed) {
-      graph_.advance_stage();
+    if (graph_.state_manager_.state() == GraphState::Assemble_Force_Directed) {
+      graph_.state_manager_.advance_state();
       if (graph_.use_checkpoints()) {
         timer.Start();
         //Store();
@@ -124,7 +122,7 @@ namespace raven {
   }
 
   void Graph_Assembler::AssembleDiploids() {
-    if (graph_.stage() != Graph_Stage::Assemble_Diploids) {
+    if (graph_.state_manager_.state() != GraphState::Assemble_Diploids) {
       return;
     }
     biosoup::Timer timer{};
@@ -167,7 +165,7 @@ namespace raven {
   }
 
   void Graph_Assembler::AssembleHaploids(){
-      if (graph_.stage() != Graph_Stage::Assemble_Diploids) {
+      if (graph_.state_manager_.state() != GraphState::Assemble_Diploids) {
       return;
     }
     biosoup::Timer timer{};
@@ -182,9 +180,7 @@ namespace raven {
   }
 
   void Graph_Assembler::UlAssemble(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &ul_sequences) {
-    if (graph_.stage() != Graph_Stage::Assemble_Transitive_Edges
-        && graph_.stage() != Graph_Stage::Assemble_Tips_Bubbles
-        && graph_.stage() != Graph_Stage::Assemble_Force_Directed) {
+    if (!graph_.state_manager_.assemble_any_state()) {
       return;
     }
 
@@ -192,7 +188,7 @@ namespace raven {
     graph_.PrintGfa(param_.gfa_after_construction_filename, false);
 
     // remove transitive edges
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
       timer.Start();
 
       RemoveTransitiveEdges();
@@ -204,7 +200,7 @@ namespace raven {
       graph_.PrintGfa(param_.gfa_after_transitive_filename, false);
     }
 
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
       timer.Start();
 
       graph_.CreateUnitigGraph(param_.gfa_unitig_graph_filename);
@@ -216,7 +212,7 @@ namespace raven {
       // PrintGfa("after_bubble_chain.gfa");
     }
 
-    if (graph_.stage() == Graph_Stage::Assemble_Transitive_Edges) {
+    if (graph_.state_manager_.state() == GraphState::Assemble_Transitive_Edges) {
       timer.Start();
 
       ResolveGraphWithUl(ul_sequences);

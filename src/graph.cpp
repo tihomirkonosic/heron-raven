@@ -21,7 +21,7 @@ namespace raven {
         annotations_(),
         annotations_compressed_(),
         piles_(),
-        stage_(Graph_Stage::Construct_Graph),
+        state_manager_(GraphState::Construct_Graph),
         checkpoints_(checkpoints),
         thread_pool_(thread_pool ?
                      thread_pool :

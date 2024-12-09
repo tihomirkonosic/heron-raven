@@ -623,7 +623,7 @@ namespace raven {
 //endregion
 
     // checkpoint test
-    if (graph_.stage() == Graph_Stage::Construct_Graph && graph_.use_checkpoints()) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph && graph_.use_checkpoints()) {
       graph_.Store(param.cereal_filename);
     }
 
@@ -662,7 +662,7 @@ namespace raven {
     //   os << it.compressed_sequences.InflateData() << std::endl;
     // }
     //exit(0);
-    if (graph_.stage() == Graph_Stage::Construct_Graph) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph) {
       for (const auto &it: sequences) {
         graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
       }
@@ -900,7 +900,7 @@ namespace raven {
     graph_.PrintOverlaps(extended_overlaps, sequences, true, "beforeValidRegion.paf");
 
     // trim and annotate piles
-    if (graph_.stage() == Graph_Stage::Construct_Graph) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph) {
       timer.Start();
       std::vector<std::future<void>> thread_futures;
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
@@ -1021,7 +1021,7 @@ namespace raven {
     // std::ofstream outdata4;
     // outdata4.open("overlaps_at_snps.txt");
     // resolve contained reads
-    if (graph_.stage() == Graph_Stage::Construct_Graph) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph) {
       timer.Start();
       std::vector<std::future<void>> futures;
       for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
@@ -1146,7 +1146,7 @@ namespace raven {
     graph_.PrintOverlaps(extended_overlaps, sequences, true, "afterContained.paf");
 
     // resolve chimeric sequences
-    if (graph_.stage() == Graph_Stage::Construct_Graph) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph) {
       timer.Start();
 
       while (true) {
@@ -1218,8 +1218,8 @@ namespace raven {
     graph_.PrintOverlaps(extended_overlaps, sequences, true, "afterChimeric.paf");
 
     // checkpoint
-    if (graph_.stage() == Graph_Stage::Construct_Graph) {
-      graph_.advance_stage();
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph) {
+      graph_.state_manager_.advance_state();
       if (graph_.use_checkpoints()) {
         timer.Start();
         graph_.Store(param.cereal_filename);
@@ -1230,7 +1230,7 @@ namespace raven {
     }
 
     // find overlaps and repetitive regions
-    if (graph_.stage() == Graph_Stage::Construct_Graph_2) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph_2) {
       // std::sort(sequences.begin(), sequences.end(),
       //           [&](const std::unique_ptr<biosoup::NucleicAcid> &lhs,
       //               const std::unique_ptr<biosoup::NucleicAcid> &rhs) -> bool {
@@ -1520,7 +1520,7 @@ namespace raven {
     // }
 
     // construct assembly graph
-    if (graph_.stage() == Graph_Stage::Construct_Graph_2) {
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph_2) {
       std::ofstream outdata_invalid;
       outdata_invalid.open("invalid_reads.txt");
       for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
@@ -1669,8 +1669,8 @@ namespace raven {
     }
 
     // checkpoint
-    if (graph_.stage() == Graph_Stage::Construct_Graph_2) {
-      graph_.advance_stage();
+    if (graph_.state_manager_.state() == GraphState::Construct_Graph_2) {
+      graph_.state_manager_.advance_state();
       if (graph_.use_checkpoints()) {
         timer.Start();
         graph_.Store(param.cereal_filename);
@@ -1956,9 +1956,8 @@ namespace raven {
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
-    while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
-      graph_.advance_stage();
-    }
+
+    graph_.state_manager_.set_state(GraphState::Assemble_Transitive_Edges);
   }
 
   void Graph_Constructor::LoadFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, const std::string &paf_path){
@@ -2009,9 +2008,7 @@ namespace raven {
       std::cerr << "Exception: " << e.what() << std::endl;
     }
 
-    while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
-      graph_.advance_stage();
-    }
+    graph_.state_manager_.set_state(GraphState::Assemble_Transitive_Edges);
   }
   // NOLINT
 } // raven

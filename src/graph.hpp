@@ -27,6 +27,7 @@
 #include "edge.h"
 #include "marked_edge.h"
 #include "extended_overlap.h"
+#include "state_manager.h"
 
 namespace raven {
   constexpr std::uint8_t use_frequencies = 0;
@@ -34,15 +35,6 @@ namespace raven {
   constexpr double freq_low_th = 0.333;
   constexpr double freq_high_th = 0.667;
   constexpr std::uint8_t print_snp_data = 1;
-
-  enum struct Graph_Stage {
-    Construct_Graph,
-    Construct_Graph_2,
-    Assemble_Transitive_Edges,
-    Assemble_Tips_Bubbles,
-    Assemble_Force_Directed,
-    Assemble_Diploids
-  };
 
   class Graph {
   public:
@@ -59,14 +51,6 @@ namespace raven {
     Graph &operator=(Graph &&) = default;
 
     ~Graph() = default;
-
-    Graph_Stage stage() const {
-      return stage_;
-    }
-
-    void advance_stage() {
-      stage_ = (Graph_Stage) ((int) stage_ + 1);
-    }
 
     bool use_checkpoints() {
       return checkpoints_;
@@ -146,6 +130,8 @@ namespace raven {
     std::vector<std::shared_ptr<Node>> nodes_alternate_;
     std::vector<std::shared_ptr<Edge>> edges_alternate_;
 
+    StateManager state_manager_;
+
   private:
     friend cereal::access;
 
@@ -160,14 +146,17 @@ namespace raven {
         }
       }
 
-      archive(stage_, annotations_, piles_, nodes_, edges_, connections);
+      archive(state_manager_.state(), annotations_, piles_, nodes_, edges_, connections);
     }
 
     template<class Archive>
     void load(Archive &archive) {  // NOLINT
       std::vector<std::pair<std::uint32_t, std::uint32_t>> connections;
 
-      archive(stage_, annotations_, piles_, nodes_, edges_, connections);
+      GraphState loadedState;
+      archive(loadedState, annotations_, piles_, nodes_, edges_, connections);
+
+      state_manager_.set_state(loadedState);
 
       for (std::uint32_t i = 0; i < nodes_.size(); i += 2) {
         if (nodes_[i]) {
@@ -196,7 +185,6 @@ namespace raven {
       Edge::num_objects = edges_.size();
     }
 
-    Graph_Stage stage_;
     bool checkpoints_;
     std::shared_ptr<thread_pool::ThreadPool> thread_pool_;
   };

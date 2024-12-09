@@ -49,9 +49,7 @@ int main(int argc, char **argv) {
   raven::Parser parser;
   std::vector<std::unique_ptr<biosoup::NucleicAcid>> sequences;
 
-  if ((graph.stage() == raven::Graph_Stage::Construct_Graph
-      || graph.stage() == raven::Graph_Stage::Construct_Graph_2
-      || param.num_polishing_rounds > 2) && !param.skip_contruction) {
+  if ((graph.state_manager_.construct_any_state() || param.num_polishing_rounds > 2) && !param.skip_contruction) {
     try {
       auto sparser = parser.CreateParser(param.sequence_path);
       if (sparser == nullptr) {
