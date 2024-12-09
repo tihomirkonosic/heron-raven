@@ -360,7 +360,6 @@ namespace raven {
 
       std::uint32_t extension = 1;
 
-      bool is_circular = false;
       auto begin = it.get();
 
       while (true) {  // extend left
@@ -379,7 +378,6 @@ namespace raven {
         begin = next;
         ++extension;
         if (begin == it.get()) {
-          is_circular = true;
           break;
         }
       }
@@ -402,7 +400,6 @@ namespace raven {
         end = next;
         ++extension;
         if (end == it.get()) {
-          is_circular = true;
           break;
         }
       }

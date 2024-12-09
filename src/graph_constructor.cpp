@@ -138,22 +138,6 @@ namespace raven {
       return rs;
     };
 
-    auto overlap_reverse = [&edlib_alignment_reverse](const biosoup::Overlap &o) -> biosoup::Overlap {
-      return biosoup::Overlap(
-          o.rhs_id, o.rhs_begin, o.rhs_end,
-          o.lhs_id, o.lhs_begin, o.lhs_end,
-          o.score, edlib_alignment_reverse(o.alignment),
-          o.strand);
-    };
-
-    auto cigar_overlap_reverse = [&cigar_alignment_reverse](const biosoup::Overlap &o) -> biosoup::Overlap {
-      return biosoup::Overlap(
-          o.rhs_id, o.rhs_begin, o.rhs_end,
-          o.lhs_id, o.lhs_begin, o.lhs_end,
-          o.score, cigar_alignment_reverse(o.alignment),
-          o.strand);
-    };
-
     auto cigar_extended_overlap_reverse = [&cigar_alignment_reverse](const extended_overlap &eo) -> extended_overlap {
       return extended_overlap{
           biosoup::Overlap(
@@ -235,18 +219,6 @@ namespace raven {
       o.rhs_end = rhs_end;
 
       return true;
-    };
-
-    auto extend_overlap = [&] (biosoup::Overlap &o) -> std::uint32_t {
-      std::uint32_t start_offset = std::min(o.lhs_begin, o.rhs_begin);
-      std::uint32_t end_offset = std::min(sequences[o.lhs_id]->inflated_len - o.lhs_end,
-                                          sequences[o.rhs_id]->inflated_len - o.rhs_end);
-
-      
-      o.lhs_begin = o.lhs_begin - start_offset;
-      o.lhs_end = o.lhs_end + end_offset;
-      o.rhs_begin = o.rhs_begin - start_offset;
-      o.rhs_end = o.rhs_end + end_offset;
     };
 
     auto overlap_type = [&](const biosoup::Overlap &o) -> std::uint32_t {
@@ -1719,26 +1691,6 @@ namespace raven {
     if (!file.is_open()) {
       throw std::runtime_error("Error opening file: " + overlaps_path);
     }
-    
-    auto reverse_hifiasm_overlap = [](const extended_overlap &eo) -> extended_overlap {
-      return extended_overlap{
-        biosoup::Overlap(
-              eo.overlap.rhs_id, eo.overlap.rhs_begin, eo.overlap.rhs_end,
-              eo.overlap.lhs_id, eo.overlap.lhs_begin, eo.overlap.lhs_end,
-              eo.overlap.score,
-              eo.overlap.strand),
-        edlib_align{}
-      };
-    };
-    
-    auto get_read_id = [](const std::string &read_name, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences) -> std::uint32_t {
-      for (const auto &it: sequences) {
-        if (it->name == read_name) {
-          return it->id;
-        }
-      }
-      return -1;
-    };
 
     std::map<std::string, std::uint32_t> sequence_name_to_seq_id;
     for (std::uint32_t i = 0; i < sequences.size(); ++i) {
@@ -1785,9 +1737,9 @@ namespace raven {
         extended_overlaps[lhs_seq_id].emplace_back(total_ovlp);
         //extended_overlaps[rhs_seq_id].emplace_back(reverse_hifiasm_overlap(total_ovlp));
       }
-    };
+    }
     std::cerr << "[raven::Graph::LoadHerroSNPs] loaded overlaps from: " << overlaps_path << std::endl;
-  };
+  }
 
   void Graph_Constructor::LoadHerroSNPs(const std::string &herro_snps_path, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences){
     std::ifstream file(herro_snps_path);
@@ -1801,7 +1753,7 @@ namespace raven {
     for (std::uint32_t i = 0; i < sequences.size(); ++i) {
       sequence_name_to_seq_id[sequences[i]->name] = sequences[i]->id;
     }
-    while(std::getline(file, line)){
+    while (std::getline(file, line)) {
           std::string single_line = line;
           std::istringstream iss(single_line);
 
@@ -1812,8 +1764,6 @@ namespace raven {
           std::uint32_t last_id;
           std::vector<std::string> elements(3);
           std::vector<std::string> elements2(2);
-          
-
 
           for (int i = 0; i < 3 && std::getline(iss, item, '\t'); ++i) {
             elements[i] = item;
@@ -1843,8 +1793,8 @@ namespace raven {
             elements2[1] = elements[1];
             found = false;
           }
-    };
-  };
+    }
+  }
 
 
   void Graph_Constructor::LoadFromGfa(const std::string &gfa_path){
@@ -1871,7 +1821,6 @@ namespace raven {
 
           std::string item;
           std::string first_item;
-          bool is_first = true;
           std::uint8_t counter = 0;
           std::uint32_t sequence_counter = 0;
           std::string seq_name;
@@ -1929,7 +1878,6 @@ namespace raven {
 
           std::string item;
           std::string first_item;
-          bool is_first = true;
           std::uint8_t counter = 0;
           std::uint32_t sequence_counter = 0;
           std::string seq_name;
@@ -2011,7 +1959,7 @@ namespace raven {
     while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
       graph_.advance_stage();
     }
-  };
+  }
 
   void Graph_Constructor::LoadFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, const std::string &paf_path){
     try {
@@ -2064,6 +2012,6 @@ namespace raven {
     while(graph_.stage() != Graph_Stage::Assemble_Transitive_Edges){
       graph_.advance_stage();
     }
-  };
+  }
   // NOLINT
 } // raven
