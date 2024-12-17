@@ -152,6 +152,8 @@ void Graph_Constructor::LoadOverlapsFromPaf(std::vector<std::unique_ptr<biosoup:
   for (const auto &it : extended_layers_futures) {
     it.wait();
   }
+
+  extended_layers_futures.clear();
 }
 
 void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
