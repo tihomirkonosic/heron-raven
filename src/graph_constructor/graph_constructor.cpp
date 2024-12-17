@@ -118,7 +118,7 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
 
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_snp_filename);
 
-  ResolveContainedReads(sequences, extended_overlaps, timer, param);
+  ResolveContainedReads(sequences, extended_overlaps, timer);
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_contained_filename);
 
   ResolveChimericSequences(sequences, extended_overlaps, timer);
@@ -365,8 +365,7 @@ void Graph_Constructor::TrimAndAnnotatePiles(std::vector<std::unique_ptr<biosoup
 
 void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                            std::vector<std::vector<extended_overlap>> &extended_overlaps,
-                           biosoup::Timer &timer,
-                           Program_Parameters &param) {
+                           biosoup::Timer &timer) {
 
   timer.Start();
   std::vector<std::future<void>> futures;
