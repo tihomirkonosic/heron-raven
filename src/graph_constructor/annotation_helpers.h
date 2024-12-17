@@ -2,6 +2,7 @@
 #ifndef RAVEN_SRC_GRAPH_CONSTRUCTOR_ANNOTATION_HELPERS_H_
 #define RAVEN_SRC_GRAPH_CONSTRUCTOR_ANNOTATION_HELPERS_H_
 
+#include <fstream>
 #include "../graph.hpp"
 #include "overlap_helpers.h"
 #include "edlib.h"
@@ -166,7 +167,6 @@ void call_snps(std::uint32_t i,
         }
       }
       if (variants > 1) graph.annotations_[i].emplace(j);
-
     }
     ++j;
   }

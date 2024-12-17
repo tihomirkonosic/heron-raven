@@ -50,9 +50,11 @@ struct Program_Parameters {
   std::string gfa_post_cleaning_filename {"post_cleaning.gfa"};
   std::string gfa_unitig_graph_filename {"unitig_graph.gfa"};
 
+  std::string paf_initial_overlaps_filename {"initialOverlaps.paf"};
   std::string paf_after_snp_filename {"afterSNP.paf"};
   std::string paf_after_contained_filename {"afterContained.paf"};
   std::string paf_after_chimeric_filename {"afterChimeric.paf"};
+  std::string paf_before_parsing_edges_filename {"beforeEdges.paf"};
 
   std::string cereal_filename {"backup.cereal"};
 

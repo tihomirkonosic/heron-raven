@@ -234,9 +234,11 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
           param.gfa_post_cleaning_filename = param.root_path + "_" + param.gfa_post_cleaning_filename;
           param.gfa_unitig_graph_filename = param.root_path + "_" + param.gfa_unitig_graph_filename;
 
+          param.paf_initial_overlaps_filename = param.root_path + "_" + param.paf_initial_overlaps_filename;
           param.paf_after_snp_filename = param.root_path + "_" + param.paf_after_snp_filename;
           param.paf_after_contained_filename = param.root_path + "_" + param.paf_after_contained_filename;
           param.paf_after_chimeric_filename = param.root_path + "_" + param.paf_after_chimeric_filename;
+          param.paf_before_parsing_edges_filename = param.root_path + "_" + param.paf_before_parsing_edges_filename;
 
           param.cereal_filename = param.root_path + "_" + param.cereal_filename;
         }
