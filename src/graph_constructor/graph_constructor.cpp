@@ -224,7 +224,7 @@ void Graph_Constructor::Construct(
 
   std::ofstream outdata;
   outdata.open("piles.csv");
-  for (int i = 0; i < graph_.piles_.size(); i++) {
+  for (int i = 0; i < (int)graph_.piles_.size(); i++) {
     outdata << sequences[i].get()->name << ",";
     if (graph_.piles_[i]->get_data().empty()) {
       continue;
@@ -269,7 +269,7 @@ void Graph_Constructor::Construct(
 
   std::ofstream outdata3;
   outdata3.open("valid_regions.fasta");
-  for (int i = 0; i < graph_.piles_.size(); i++) {
+  for (int i = 0; i < (int)graph_.piles_.size(); i++) {
     outdata3 << ">" << graph_.piles_[i]->id() << "," << graph_.piles_[i]->begin() << "," << graph_.piles_[i]->end()
              << std::endl;
     outdata3 << std::endl;
@@ -293,7 +293,7 @@ void Graph_Constructor::Construct(
 
   if (!load_cigar) {
     std::vector<std::future<void>> void_futures;
-    for (int i = 0; i < sequences.size(); i++) {
+    for (int i = 0; i < (int)sequences.size(); i++) {
       void_futures.emplace_back(thread_pool_->Submit(
         [&](std::uint32_t i) -> void {
           find_pairwise_alignment(i, extended_overlaps[i], sequences, graph_);
@@ -308,7 +308,7 @@ void Graph_Constructor::Construct(
 
   if (param.herro_snps_path == "") {
     std::vector<std::future<void>> void_futures;
-    for (int i = 0; i < sequences.size(); i++) {
+    for (int i = 0; i < (int)sequences.size(); i++) {
       void_futures.emplace_back(thread_pool_->Submit(
         [&](std::uint32_t i) -> void {
           call_snps(i, extended_overlaps[i], sequences, graph_);
@@ -597,7 +597,7 @@ void Graph_Constructor::Construct(
 
       bool any_edge = false;
 
-      for (int j = 0; j < extended_overlaps[it->id()].size(); j++) {
+      for (int j = 0; j < (int)extended_overlaps[it->id()].size(); j++) {
         if (overlap_type(extended_overlaps[it->id()][j].overlap, graph_) > 2) {
           if (!graph_.piles_[extended_overlaps[it->id()][j].overlap.rhs_id]->is_invalid()) {
             any_edge = true;
@@ -648,7 +648,7 @@ void Graph_Constructor::Construct(
 
     graph_.PrintOverlaps(extended_overlaps, sequences, true, "beforeEdges.paf");
 
-    for (int i = 0; i < extended_overlaps.size(); i++) {
+    for (int i = 0; i < (int)extended_overlaps.size(); i++) {
 
       for (auto &it : extended_overlaps[i]) {  // create edges
 
@@ -742,7 +742,7 @@ void Graph_Constructor::LoadOverlaps(const std::string &overlaps_path,
     // rhs_seq_id = get_read_id(items[5], sequences);
     rhs_seq_id = sequence_name_to_seq_id[items[5]];
 
-    if (lhs_seq_id == -1 || rhs_seq_id == -1) {
+    if (lhs_seq_id == (std::uint32_t )-1 || rhs_seq_id == (std::uint32_t )-1) {
       continue;
     } else {
       biosoup::Overlap overlap{ lhs_seq_id, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]),
@@ -1042,4 +1042,5 @@ void Graph_Constructor::LoadFromPaf(std::vector<std::unique_ptr<biosoup::Nucleic
   graph_.state_manager_.set_state(GraphState::Assemble_Transitive_Edges);
 }
 // NOLINT
+
 } // raven

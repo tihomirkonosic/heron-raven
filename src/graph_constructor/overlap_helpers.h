@@ -49,7 +49,7 @@ inline std::string cigar_to_edlib_alignment(const std::string &s)  {
   if (s.empty()) {
     return rs;
   }
-  for (int i = 0; i < s.length(); i++) {
+  for (int i = 0; i < (int)s.length(); i++) {
     if (std::isdigit(s[i])) {
       if (pos == 0) {
         start_pos = i;
@@ -57,28 +57,28 @@ inline std::string cigar_to_edlib_alignment(const std::string &s)  {
       ++pos;
     } else {
       total_num = 0;
-      for (int j = start_pos; j < start_pos + pos; j++) {
+      for (int j = start_pos; j < (int)(start_pos + pos); j++) {
         total_num += (s[j] - '0') * std::pow(10, (start_pos + pos) - j - 1);
       }
       pos = 0;
       switch (s[i]) {
         case '=':
-          for (int j = 0; j < total_num; j++) {
+          for (int j = 0; j < (int)total_num; j++) {
             rs += '\000';
           };
           break;
         case 'X':
-          for (int j = 0; j < total_num; j++) {
+          for (int j = 0; j < (int)total_num; j++) {
             rs += '\003';
           };
           break;
         case 'I':
-          for (int j = 0; j < total_num; j++) {
+          for (int j = 0; j < (int)total_num; j++) {
             rs += '\001';
           };
           break;
         case 'D':
-          for (int j = 0; j < total_num; j++) {
+          for (int j = 0; j < (int)total_num; j++) {
             rs += '\002';
           };
           break;
