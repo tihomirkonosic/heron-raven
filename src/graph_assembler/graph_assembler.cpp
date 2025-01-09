@@ -225,6 +225,8 @@ namespace raven {
 
   }
 
+  std::ofstream transitive_pairs("transitive_pairs.txt");
+  
   std::uint32_t Graph_Assembler::RemoveTransitiveEdges() {
     auto is_comparable = [](double a, double b) -> bool {
       double eps = 0.12;
@@ -247,6 +249,9 @@ namespace raven {
               is_comparable(jt->length + kt->length, candidate[kt->head->id]->length)) {  // NOLINT
             marked_edges.emplace(candidate[kt->head->id]->id);
             marked_edges.emplace(candidate[kt->head->id]->pair->id);
+            transitive_pairs << candidate[kt->head->id]->tail->sequence.name << ":" << candidate[kt->head->id]->head->sequence.name 
+                             << ";" << graph_.edges_[jt->id]->tail->sequence.name << ":" << graph_.edges_[jt->id]->head->sequence.name 
+                             << ";" << graph_.edges_[kt->id]->tail->sequence.name << ":" << graph_.edges_[kt->id]->head->sequence.name << std::endl;
           }
         }
       }

@@ -19,3 +19,4 @@ cmake*
 !CMakeLists.txt
 
 Makefile
+test_build/CTestTestfile.cmake

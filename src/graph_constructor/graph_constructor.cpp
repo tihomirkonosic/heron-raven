@@ -589,7 +589,7 @@ void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<bioso
 
   std::vector<std::int32_t> sequence_to_node(graph_.piles_.size(), -1);
   for (const auto &it : graph_.piles_) {  // create nodes
-    if (it->is_invalid() || overlaps[it->id()].empty()) {
+    if (it->is_invalid() || it->is_contained() || overlaps[it->id()].empty()) {
       continue;
     }
 
