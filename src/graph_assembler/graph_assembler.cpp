@@ -249,9 +249,9 @@ namespace raven {
               is_comparable(jt->length + kt->length, candidate[kt->head->id]->length)) {  // NOLINT
             marked_edges.emplace(candidate[kt->head->id]->id);
             marked_edges.emplace(candidate[kt->head->id]->pair->id);
-            transitive_pairs << candidate[kt->head->id]->tail->sequence.name << ":" << candidate[kt->head->id]->head->sequence.name 
-                             << ";" << graph_.edges_[jt->id]->tail->sequence.name << ":" << graph_.edges_[jt->id]->head->sequence.name 
-                             << ";" << graph_.edges_[kt->id]->tail->sequence.name << ":" << graph_.edges_[kt->id]->head->sequence.name << std::endl;
+            transitive_pairs << candidate[kt->head->id]->tail->sequence.name << "->" << candidate[kt->head->id]->head->sequence.name 
+                             << "\t" << graph_.edges_[jt->id]->tail->sequence.name << "->" << graph_.edges_[jt->id]->head->sequence.name 
+                             << "\t" << graph_.edges_[kt->id]->tail->sequence.name << "->" << graph_.edges_[kt->id]->head->sequence.name << std::endl;
           }
         }
       }

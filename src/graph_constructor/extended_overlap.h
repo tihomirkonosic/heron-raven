@@ -17,6 +17,15 @@ struct extended_overlap {
   std::uint32_t total_overlap_snp_mismatches;
 };
 
+enum class OverlapType {
+  perfect_heterozygous, // perfect(identity 99+) overlap with heterozygous SNPs
+  perfect_homozygous, // perfect(identity 99+) overlap without SNPs
+  high_heterozygous, // lower identity(90-99%) overlap with higher number of heterozygous SNPs(10+)
+  low_heterozygous, // lower identity(90-99%) overlap with lower number of heterozygous SNPs(10+)
+  high_homozygous, // lower identity overlap
+  low_homozygous, // lower identity overlap
+  repettive // high order repeat overlap
+};
 
 #endif // RAVEN_EXTENDED_OVERLAP_H
 
