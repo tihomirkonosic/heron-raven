@@ -116,6 +116,10 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     LoadHerroSNPs(param.herro_snps_path, sequences);
   }
 
+ // graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_snp_filename);
+
+  ResolveSnps(sequences, extended_overlaps, timer, param);
+  ResolveOverlapType(sequences, extended_overlaps, timer, param);
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_snp_filename);
 
   ResolveContainedReads(sequences, extended_overlaps, timer);
@@ -320,7 +324,7 @@ void Graph_Constructor::TrimAndAnnotatePiles(std::vector<std::unique_ptr<biosoup
 
     } else {
       graph_.piles_[i]->FindMedian();
-      graph_.piles_[i]->FindChimericRegions();
+      //graph_.piles_[i]->FindChimericRegions();
     }
   };
 
@@ -353,24 +357,24 @@ void Graph_Constructor::TrimAndAnnotatePiles(std::vector<std::unique_ptr<biosoup
 
   }
 
-  std::ofstream chimeric_out;
-  chimeric_out.open("chimeric_regions.txt");
-  for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
-    if (graph_.piles_[i]->is_maybe_chimeric()) {
-      chimeric_out << sequences[i]->name << std::endl;
-    }
-  }
-  chimeric_out.close();
+  // std::ofstream chimeric_out;
+  // chimeric_out.open("chimeric_regions.txt");
+  // for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
+  //   if (graph_.piles_[i]->is_maybe_chimeric()) {
+  //     chimeric_out << sequences[i]->name << std::endl;
+  //   }
+  // }
+  // chimeric_out.close();
 }
 
-void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
-                           std::vector<std::vector<extended_overlap>> &extended_overlaps,
-                           biosoup::Timer &timer) {
-
+void Graph_Constructor::ResolveSnps(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                   std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                   biosoup::Timer &timer,
+                   Program_Parameters &param) {
   timer.Start();
   std::vector<std::future<void>> futures;
 
-  auto thread_func = [&](std::uint32_t i) -> void {
+  auto snp_match_thread_func = [&](std::uint32_t i) -> void {
     std::uint32_t k = 0;
     for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
       if (!overlap_update(extended_overlaps[i][j].overlap, graph_)) {
@@ -433,18 +437,51 @@ void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosou
         //outdata4 << sequences[it.overlap.lhs_id]->name << " " << sequences[it.overlap.rhs_id]->name << " " << mismatches << " " << snps << std::endl;
         extended_overlaps[i][j].total_overlap_snps = snps;
         extended_overlaps[i][j].total_overlap_snp_mismatches = mismatches;
-        if (mismatches / static_cast<double>(snps) > disagreement_) {
-          continue;
-        }
+        // if (mismatches / static_cast<double>(snps) > disagreement_) {
+        //   continue;
+        // }
       }
 
-      extended_overlaps[i][k++] = extended_overlaps[i][j];
+      //extended_overlaps[i][k++] = extended_overlaps[i][j];
     }
-    extended_overlaps[i].resize(k);
+    //extended_overlaps[i].resize(k);
   };
 
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
-    futures.emplace_back(thread_pool_->Submit(thread_func, i));
+    futures.emplace_back(thread_pool_->Submit(snp_match_thread_func, i));
+  }
+
+
+  for (const auto &it : futures) {
+    it.wait();
+  }
+
+  futures.clear();
+
+}
+
+
+void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                           std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                           biosoup::Timer &timer,
+                           Program_Parameters &param) {
+
+  timer.Start();
+  std::vector<std::future<void>> futures;
+
+  
+
+  auto overlap_analysis_func = [&](std::uint32_t i) -> void {
+    for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
+      if (!overlap_update(extended_overlaps[i][j].overlap, graph_)) {
+        continue;
+      }
+
+    };
+  };
+
+  for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
+    futures.emplace_back(thread_pool_->Submit(overlap_analysis_func, i));
   }
 
   for (const auto &it : futures) {
@@ -452,6 +489,14 @@ void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosou
   }
 
   futures.clear();
+
+}
+
+void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                           std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                           biosoup::Timer &timer) {
+
+  timer.Start();
 
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
     std::uint32_t k = 0;

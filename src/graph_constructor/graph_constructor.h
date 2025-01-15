@@ -47,6 +47,14 @@ private:
                             std::vector<std::vector<extended_overlap>> &extended_overlaps,
                             biosoup::Timer &timer,
                             Program_Parameters &param);
+  void ResolveSnps(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                   std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                   biosoup::Timer &timer,
+                   Program_Parameters &param);
+  void ResolveOverlapType(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                           std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                           biosoup::Timer &timer,
+                           Program_Parameters &param);
   void ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                              std::vector<std::vector<extended_overlap>> &extended_overlaps,
                              biosoup::Timer &timer);
