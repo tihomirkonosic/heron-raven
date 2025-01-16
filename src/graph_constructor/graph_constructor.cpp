@@ -476,6 +476,80 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
       if (!overlap_update(extended_overlaps[i][j].overlap, graph_)) {
         continue;
       }
+      std::float_t identity = static_cast<float>(extended_overlaps[i][j].edlib_alignment.matches) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
+      std::uint16_t snps = extended_overlaps[i][j].total_overlap_snps;
+      std::uint16_t snp_mismatches = extended_overlaps[i][j].total_overlap_snp_mismatches;
+      std::uint16_t matches = snps - snp_mismatches;
+      std::float_t heterozygosity_rate = static_cast<float>(snps) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
+      if (identity >= 0.995){
+        if(snps > 5 && heterozygosity_rate > 0.005){
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) < 0.1){
+            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_mismatch;
+          }
+        } else if(0 < snps < 5) {
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) <= 0.4){
+            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_mismatch;
+          }
+        } else {
+          extended_overlaps[i][j].ol_type =  OverlapType::perfect_homozygous;
+        }
+      } else if (0.95 < identity < 0.995)
+      {
+        if(snps > 5 && heterozygosity_rate > 0.005){
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) < 0.1){
+            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_high_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_high_mismatch;
+          }
+        } else if(0 < snps < 5) {
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) <= 0.4){
+            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_mismatch;
+          }
+        } else {
+          extended_overlaps[i][j].ol_type =  OverlapType::high_homozygous;
+        }
+      } else if(0.85 < identity <= 0.95){
+        if(snps > 5 && heterozygosity_rate > 0.005){
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) < 0.1){
+            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_mismatch;
+          }
+        } else if(0 < snps < 5) {
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) <= 0.4){
+            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_mismatch;
+          }
+        } else {
+          extended_overlaps[i][j].ol_type =  OverlapType::mid_homozygous;
+        }
+      } else if(identity <= 0.85){
+        if(snps > 5 && heterozygosity_rate > 0.005){
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) < 0.1){
+            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_mismatch;
+          }
+        } else if(0 < snps < 5) {
+          if(static_cast<float>(snp_mismatches) / static_cast<float>(snps) <= 0.4){
+            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_match;
+          } else {
+            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_mismatch;
+          }
+        } else {
+          extended_overlaps[i][j].ol_type =  OverlapType::low_homozygous;
+        }
+      } else {
+        extended_overlaps[i][j].ol_type =  OverlapType::other;
+      }
+      
 
     };
   };
