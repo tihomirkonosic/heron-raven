@@ -14,5 +14,5 @@
       edlib_align edlib_alignment;
       std::uint32_t total_overlap_snps;
       std::uint32_t total_overlap_snp_mismatches;
-      OverlapType ol_type;
+      OverlapType ol_type = OverlapType::undefined;
     };

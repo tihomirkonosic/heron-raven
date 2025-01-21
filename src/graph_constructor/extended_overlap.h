@@ -30,7 +30,8 @@ enum class OverlapType {
   low_homozygous, // perfect(identity 99+) overlap without SNPs
 
   other,
-  repetitive // high order repeat overlap
+  repetitive, // high order repeat overlap
+  undefined
 };
 
 struct edlib_align {

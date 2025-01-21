@@ -680,6 +680,59 @@ namespace raven {
     if (path.empty()) {
       return;
     }
+    
+    auto overlapTypeToString = [&](OverlapType val) -> std::string {
+      switch(val){
+        case OverlapType::perfect_heterozygous_high_match:
+          return "perfect_heterozygous_high_match";
+        case OverlapType::perfect_heterozygous_high_mismatch:
+          return "perfect_heterozygous_high_mismatch";
+        case OverlapType::perfect_heterozygous_low_match:
+          return "perfect_heterozygous_low_match";
+        case OverlapType::perfect_heterozygous_low_mismatch:
+          return "perfect_heterozygous_low_mismatch";
+        case OverlapType::perfect_homozygous:
+          return "perfect_homozygous";
+        case OverlapType::high_heterozygous_high_match:
+          return "high_heterozygous_high_match";
+        case OverlapType::high_heterozygous_high_mismatch:
+          return "high_heterozygous_high_mismatch";
+        case OverlapType::high_heterozygous_low_match:
+          return "high_heterozygous_low_match";
+        case OverlapType::high_heterozygous_low_mismatch:
+          return "high_heterozygous_low_mismatch";
+        case OverlapType::high_homozygous:
+          return "high_homozygous";
+        case OverlapType::mid_heterozygous_high_match:
+          return "mid_heterozygous_high_match";
+        case OverlapType::mid_heterozygous_high_mismatch:
+          return "mid_heterozygous_high_mismatch";
+        case OverlapType::mid_heterozygous_low_match:
+          return "mid_heterozygous_low_match";
+        case OverlapType::mid_heterozygous_low_mismatch:
+          return "mid_heterozygous_low_mismatch";
+        case OverlapType::mid_homozygous:
+          return "mid_homozygous";
+        case OverlapType::low_heterozygous_high_match:
+          return "low_heterozygous_high_match";
+        case OverlapType::low_heterozygous_high_mismatch:
+          return "low_heterozygous_high_mismatch";
+        case OverlapType::low_heterozygous_low_match:
+          return "low_heterozygous_low_match";
+        case OverlapType::low_heterozygous_low_mismatch:
+          return "low_heterozygous_low_mismatch";
+        case OverlapType::low_homozygous:
+          return "low_homozygous";
+        case OverlapType::other:
+          return "other";
+        case OverlapType::repetitive:
+          return "repetitive";
+        case OverlapType::undefined:
+          return "undefined";
+        default:
+          return "undefined";
+      }
+    };
 
     std::ofstream os(path);
 
@@ -705,6 +758,7 @@ namespace raven {
            << "\t" << "snp:" << jt.total_overlap_snps
            << "\t" << "snpmm:" << jt.total_overlap_snp_mismatches
           // << "\t" << "ed:" << jt.edlib_alignment.edit_distance
+           << "\t" << "type:" << overlapTypeToString(jt.ol_type)
            << std::endl;
       }
     }
