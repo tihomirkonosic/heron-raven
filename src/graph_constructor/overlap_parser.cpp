@@ -1,5 +1,6 @@
 
 #include <stdexcept>
+#include <cstring>
 #include "overlap.h"
 #include "overlap_parser.h"
 

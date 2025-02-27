@@ -4,7 +4,6 @@
 
 #include <memory>
 #include <vector>
-#include <cstring>
 #include "zlib.h"
 
 #define STORAGE_SIZE 65536

@@ -21,39 +21,7 @@ if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 endif ()
 option(raven_build_tests "Build unit tests" ${raven_main_project})
 
-find_package(biosoup 0.10.0 QUIET)
-if (NOT biosoup_FOUND)
-  FetchContent_Declare(
-    biosoup
-    GIT_REPOSITORY https://github.com/rvaser/biosoup
-    GIT_TAG 0.10.0)
-
-  FetchContent_GetProperties(biosoup)
-  if (NOT biosoup_POPULATED)
-    FetchContent_Populate(biosoup)
-    add_subdirectory(
-      ${biosoup_SOURCE_DIR}
-      ${biosoup_BINARY_DIR}
-      EXCLUDE_FROM_ALL)
-  endif ()
-endif ()
-
-find_package(bioparser 3.0.13 QUIET)
-if (NOT bioparser_FOUND)
-  FetchContent_Declare(
-    bioparser
-    GIT_REPOSITORY https://github.com/rvaser/bioparser
-    GIT_TAG 3.0.13)
-
-  FetchContent_GetProperties(bioparser)
-  if (NOT bioparser_POPULATED)
-    FetchContent_Populate(bioparser)
-    add_subdirectory(
-      ${bioparser_SOURCE_DIR}
-      ${bioparser_BINARY_DIR}
-      EXCLUDE_FROM_ALL)
-  endif ()
-endif ()
+find_package(ZLIB 1.2.8 REQUIRED)
 
 find_package(cereal 1.3.0 QUIET)
 if (NOT cereal_FOUND)
@@ -73,23 +41,6 @@ if (NOT cereal_FOUND)
   endif ()
 endif ()
 
-find_package(ram 1.0.0 QUIET)
-if (NOT ram_FOUND)
-  FetchContent_Declare(
-    ram
-    GIT_REPOSITORY https://github.com/kocijan/ram
-    GIT_TAG kocijan/hpc)
-
-  FetchContent_GetProperties(ram)
-  if (NOT ram_POPULATED)
-    FetchContent_Populate(ram)
-    add_subdirectory(
-      ${ram_SOURCE_DIR}
-      ${ram_BINARY_DIR}
-      EXCLUDE_FROM_ALL)
-  endif ()
-endif ()
-
 find_package(edlib 1.2.7 QUIET)
 if (NOT edlib_FOUND)
   FetchContent_Declare(
@@ -103,6 +54,23 @@ if (NOT edlib_FOUND)
     add_subdirectory(
       ${edlib_SOURCE_DIR}
       ${edlib_BINARY_DIR}
+      EXCLUDE_FROM_ALL)
+  endif ()
+endif ()
+
+find_package(thread_pool 4.0.0 QUIET)
+if (NOT thread_pool_FOUND)
+  FetchContent_Declare(
+    thread_pool
+    GIT_REPOSITORY https://github.com/rvaser/thread_pool
+    GIT_TAG 4.0.0)
+
+  FetchContent_GetProperties(thread_pool)
+  if (NOT thread_pool_POPULATED)
+    FetchContent_Populate(thread_pool)
+    add_subdirectory(
+      ${thread_pool_SOURCE_DIR}
+      ${thread_pool_BINARY_DIR}
       EXCLUDE_FROM_ALL)
   endif ()
 endif ()
@@ -137,16 +105,16 @@ add_library(raven
   src/graph_assembler/graph_assembler.cpp
   src/option_manager.cpp
   src/graph_constructor/overlap_parser.cpp
+  src/ram/minimizer_engine.cpp
   #src/extended_overlap.cpp
   #src/read_preprocessing.cpp
 )
 
 target_link_libraries(raven
   cereal::cereal
-  biosoup::biosoup
-  bioparser::bioparser
-  ram::ram
-  edlib::edlib)
+  edlib::edlib
+  thread_pool::thread_pool
+  ZLIB::ZLIB)
 
 target_include_directories(raven PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
@@ -172,7 +140,6 @@ if (raven_build_tests)
 
   target_link_libraries(raven_test
     raven
-    bioparser::bioparser
     GTest::Main)
 
   target_compile_definitions(raven_test

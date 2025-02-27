@@ -2,6 +2,8 @@
 #include <cmath>
 #include <deque>
 #include <fstream>
+#include <map>
+#include <sstream>
 #include "graph.hpp"
 #include "graph_constructor.h"
 #include "overlap.h"
@@ -12,6 +14,7 @@
 #include "extended_overlap.h"
 #include "overlap_helpers.h"
 #include "annotation_helpers.h"
+#include "ram/minimizer_engine.hpp"
 
 namespace raven {
 Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
