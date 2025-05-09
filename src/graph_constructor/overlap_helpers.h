@@ -184,12 +184,12 @@ inline std::uint32_t overlap_type(const biosoup::Overlap &o, raven::Graph &graph
 
   std::uint32_t rhs_length =
     graph.piles_[o.rhs_id]->end() - graph.piles_[o.rhs_id]->begin();
-  std::uint32_t rhs_begin = o.strand ?
-                            o.rhs_begin - graph.piles_[o.rhs_id]->begin() :
-                            rhs_length - (o.rhs_end - graph.piles_[o.rhs_id]->begin());
-  std::uint32_t rhs_end = o.strand ?
-                          o.rhs_end - graph.piles_[o.rhs_id]->begin() :
-                          rhs_length - (o.rhs_begin - graph.piles_[o.rhs_id]->begin());
+  std::uint32_t rhs_begin = //o.strand ?
+                            o.rhs_begin - graph.piles_[o.rhs_id]->begin(); 
+                            //rhs_length - (o.rhs_end - graph.piles_[o.rhs_id]->begin());
+  std::uint32_t rhs_end = //o.strand ?
+                          o.rhs_end - graph.piles_[o.rhs_id]->begin();
+                          //rhs_length - (o.rhs_begin - graph.piles_[o.rhs_id]->begin());
 
   std::uint32_t overhang =
     std::min(lhs_begin, rhs_begin) +

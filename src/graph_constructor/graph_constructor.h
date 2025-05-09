@@ -30,10 +30,24 @@ private:
                          std::vector<std::vector<extended_overlap>> &extended_overlaps,
                          biosoup::Timer &timer,
                          Program_Parameters &param);
+  void ConstructOverlapsFromGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                               std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                               biosoup::Timer &timer,
+                               Program_Parameters &param);
+  void ConstructOverlapGraph(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                              std::vector<std::vector<extended_overlap>> &overlaps,
+                              biosoup::Timer &timer,
+                              Program_Parameters &param);
+                              
   void ConstructAssemblyGraph(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                               std::vector<std::vector<extended_overlap>> &overlaps,
                               biosoup::Timer &timer,
                               Program_Parameters &param);
+  
+  void ConstructAssemblyGraphInPhases(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                                               std::vector<std::vector<extended_overlap>> &overlaps,
+                                               biosoup::Timer &timer,
+                                               Program_Parameters &param);
 
   void LoadOverlapsFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                            std::vector<std::vector<extended_overlap>> &extended_overlaps,
@@ -58,6 +72,9 @@ private:
   void ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                              std::vector<std::vector<extended_overlap>> &extended_overlaps,
                              biosoup::Timer &timer);
+  void ResolveContainedReadsGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                              std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                              biosoup::Timer &timer);
   void ResolveChimericSequences(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                                 std::vector<std::vector<extended_overlap>> &extended_overlaps,
                                 biosoup::Timer &timer);
@@ -70,6 +87,10 @@ private:
                        std::vector<std::vector<extended_overlap>> &extended_overlaps,
                        Program_Parameters &param);
   void LoadOverlaps(const std::string &overlaps_path,
+                    std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                    std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                    bool load_cigar);
+  void LoadGTOverlaps(const std::string &overlaps_path,
                     std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                     std::vector<std::vector<extended_overlap>> &extended_overlaps,
                     bool load_cigar);

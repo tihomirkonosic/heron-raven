@@ -37,6 +37,7 @@ edlib_align edlib_wrapper(
         ++alignment_result.matches;
       }
     }
+    edlibFreeAlignResult(result);
     return alignment_result;
   } else {
     edlibFreeAlignResult(result);

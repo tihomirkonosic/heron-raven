@@ -642,13 +642,16 @@ namespace raven {
 
     std::ofstream os(path);
     for (const auto &it: nodes_) {
-      if ((it == nullptr) || it->is_rc()){
-        continue;
-        }
-      // if ((it == nullptr) || it->is_rc() ||
-      //     (it->count == 1 && it->outdegree() == 0 && it->indegree() == 0)) {
+      // if ((it == nullptr) || it->is_rc()){
+      //   continue;
+      //   }
+      // if ((it == nullptr)){
       //   continue;
       // }
+      if ((it == nullptr) || it->is_rc() ||
+          (it->count == 1 && it->outdegree() == 0 && it->indegree() == 0)) {
+        continue;
+      }
       os << "S\t" << it->sequence.name
          << "\t" << (print_seq ? it->sequence.InflateData() : "*")
          << "\tLN:i:" << it->sequence.inflated_len
@@ -663,9 +666,12 @@ namespace raven {
       }
     }
     for (const auto &it: edges_) {
-      if (it == nullptr || it->is_rc()) {
-        continue;
-      }
+   if (it == nullptr || it->is_rc()) {
+     continue;
+    }
+      // if (it == nullptr) {
+      //   continue;
+      // }
       os << "L\t" << it->tail->sequence.name << "\t" << (it->tail->is_rc() ? '-' : '+')  // NOLINT
          << "\t" << it->head->sequence.name << "\t" << (it->head->is_rc() ? '-' : '+')  // NOLINT
          << "\t" << it->tail->sequence.inflated_len - it->length << 'M'
@@ -757,8 +763,12 @@ namespace raven {
            << "\t" << "cg:Z:" << (print_cigar ? jt.edlib_alignment.cigar : "0")
            << "\t" << "snp:" << jt.total_overlap_snps
            << "\t" << "snpmm:" << jt.total_overlap_snp_mismatches
-          // << "\t" << "ed:" << jt.edlib_alignment.edit_distance
-           << "\t" << "type:" << overlapTypeToString(jt.ol_type)
+           << "\t" << "identity:" << jt.identity
+           << "\t" << "heterozygosity:" << jt.heterozygosity_rate
+           << "\t" << "gtype:" << jt.graph_overlap_type
+           << "\t" << "ed:" << jt.edlib_alignment.edit_distance
+           //<< "\t" << "type:" << overlapTypeToString(jt.ol_type)
+           << "\t" << "gt:" << (jt.ground_truth ? 1 : 0)
            << std::endl;
       }
     }

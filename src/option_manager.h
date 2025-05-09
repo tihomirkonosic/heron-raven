@@ -41,7 +41,9 @@ struct Program_Parameters {
   bool load_input_paf = false;
   std::string input_paf_path = "";
   std::string sequence_path;
+  std::string gt_overlaps;
 
+  std::string gfa_after_overlap_graph_construction_filename {"after_overlap_graph_constructor.gfa"};
   std::string gfa_after_construction_filename {"after_construction.gfa"};
   std::string gfa_after_transitive_filename {"after_transitive.gfa"};
   std::string gfa_after_bubble_filename {"after_bubble.gfa"};

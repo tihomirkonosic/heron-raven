@@ -42,7 +42,12 @@ void Graph_Constructor::Construct(
     graph_.Store(param.cereal_filename);
   }
 
-  ConstructOverlaps(sequences, extended_overlaps, timer, param);
+
+  if(param.gt_overlaps.empty()){
+    ConstructOverlaps(sequences, extended_overlaps, timer, param);
+  } else {
+    ConstructOverlapsFromGT(sequences, extended_overlaps, timer, param);
+  };
 
   graph_.state_manager_.advance_state();
   if (graph_.use_checkpoints()) {
@@ -52,7 +57,7 @@ void Graph_Constructor::Construct(
               << std::fixed << timer.Stop() << "s"
               << std::endl;
   }
-
+  ConstructOverlapGraph(sequences, extended_overlaps, timer, param);
   ConstructAssemblyGraph(sequences, extended_overlaps, timer, param);
 
   graph_.state_manager_.advance_state();
@@ -117,17 +122,39 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
   }
 
  // graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_snp_filename);
-
   ResolveSnps(sequences, extended_overlaps, timer, param);
-  ResolveOverlapType(sequences, extended_overlaps, timer, param);
+
+  //ResolveOverlapType(sequences, extended_overlaps, timer, param);
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_snp_filename);
 
   ResolveContainedReads(sequences, extended_overlaps, timer);
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_contained_filename);
 
-  ResolveChimericSequences(sequences, extended_overlaps, timer);
-  graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_chimeric_filename);
+ // ResolveChimericSequences(sequences, extended_overlaps, timer);
+  //graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_chimeric_filename);
 }
+
+void Graph_Constructor::ConstructOverlapsFromGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                        std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                        biosoup::Timer &timer,
+                        Program_Parameters &param){
+  
+  std::cerr << "[raven::Graph::Construct] Constructing overlaps from GT"
+            << std::endl;
+  graph_.annotations_.resize(sequences.size());
+
+  for (const auto &it : sequences) {
+    graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
+  }
+  LoadGTOverlaps(param.gt_overlaps, sequences, extended_overlaps, false);
+  graph_.PrintOverlaps(extended_overlaps, sequences, true, "gt_overlaps.paf");
+  TrimAndAnnotatePiles(sequences, extended_overlaps, timer, param);
+  PrintPiles(sequences);
+  graph_.PrintOverlaps(extended_overlaps, sequences, true, "beforeContainedGT.paf");
+  ResolveContainedReadsGT(sequences, extended_overlaps, timer);
+  graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_after_contained_filename);
+  
+};
 
 void Graph_Constructor::LoadOverlapsFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                          std::vector<std::vector<extended_overlap>> &extended_overlaps,
@@ -437,14 +464,20 @@ void Graph_Constructor::ResolveSnps(std::vector<std::unique_ptr<biosoup::Nucleic
         //outdata4 << sequences[it.overlap.lhs_id]->name << " " << sequences[it.overlap.rhs_id]->name << " " << mismatches << " " << snps << std::endl;
         extended_overlaps[i][j].total_overlap_snps = snps;
         extended_overlaps[i][j].total_overlap_snp_mismatches = mismatches;
-        // if (mismatches / static_cast<double>(snps) > disagreement_) {
-        //   continue;
-        // }
+        std::float_t identity = static_cast<float>(extended_overlaps[i][j].edlib_alignment.matches) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
+        std::uint16_t matches = snps - mismatches;
+        std::float_t missmatch_rate = static_cast<float>(mismatches) / static_cast<float>(snps);
+        std::float_t heterozygosity_rate = static_cast<float>(snps) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
+        extended_overlaps[i][j].identity = identity;
+        extended_overlaps[i][j].heterozygosity_rate = heterozygosity_rate;
+     //   if (mismatches / static_cast<double>(snps) > disagreement_) {
+       //   continue;
+        //}
       }
 
       //extended_overlaps[i][k++] = extended_overlaps[i][j];
     }
-    //extended_overlaps[i].resize(k);
+   // extended_overlaps[i].resize(k);
   };
 
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
@@ -482,15 +515,17 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
       std::uint16_t matches = snps - snp_mismatches;
       std::float_t missmatch_rate = static_cast<float>(snp_mismatches) / static_cast<float>(snps);
       std::float_t heterozygosity_rate = static_cast<float>(snps) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
-      if (identity >= 0.995){
+      extended_overlaps[i][j].identity = identity;
+      extended_overlaps[i][j].heterozygosity_rate = heterozygosity_rate;
+      if (identity >= 0.999871){
         if(heterozygosity_rate >= 0.005){
           if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_mismatch;
           }
-        } else if(heterozygosity_rate < 0.005) {
-          if(missmatch_rate <= 0.2){
+        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
+          if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_mismatch;
@@ -498,7 +533,7 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
         } else {
           extended_overlaps[i][j].ol_type =  OverlapType::perfect_homozygous;
         }
-      } else if (0.95 < identity && identity < 0.995)
+      } else if (0.999377 < identity && identity < 0.999871)
       {
         if(heterozygosity_rate >= 0.005){
           if(missmatch_rate < 0.1){
@@ -506,8 +541,8 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_high_mismatch;
           }
-        } else if(heterozygosity_rate < 0.005) {
-          if(missmatch_rate <= 0.2){
+        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
+          if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_mismatch;
@@ -515,15 +550,15 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
         } else {
           extended_overlaps[i][j].ol_type =  OverlapType::high_homozygous;
         }
-      } else if(0.85 < identity && identity <= 0.95){
+      } else if(0.997505 < identity && identity <= 0.999377){
         if(heterozygosity_rate >= 0.005){
           if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_mismatch;
           }
-        } else if(heterozygosity_rate < 0.005) {
-          if(missmatch_rate <= 0.2){
+        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
+          if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_mismatch;
@@ -531,15 +566,15 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
         } else {
           extended_overlaps[i][j].ol_type =  OverlapType::mid_homozygous;
         }
-      } else if(identity <= 0.85){
+      } else if(identity <= 0.997505){
         if(heterozygosity_rate >= 0.005){
           if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_mismatch;
           }
-        } else if(heterozygosity_rate < 0.005) {
-          if(missmatch_rate <= 0.2){
+        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
+          if(missmatch_rate < 0.1){
             extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_match;
           } else {
             extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_mismatch;
@@ -573,6 +608,29 @@ void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosou
 
   timer.Start();
 
+  auto safe_overlap = [&](const extended_overlap &overlap) -> bool {
+    return (overlap.ol_type == OverlapType::perfect_heterozygous_low_match ||
+            overlap.ol_type == OverlapType::perfect_heterozygous_high_match ||//); // ||
+            
+            overlap.ol_type == OverlapType::high_heterozygous_low_match ||
+            overlap.ol_type == OverlapType::high_heterozygous_high_match); // ||
+            // overlap.ol_type == OverlapType::perfect_homozygous ||
+            // overlap.ol_type == OverlapType::high_homozygous ||
+            //overlap.ol_type == OverlapType::high_heterozygous_high_match); 
+   // return true;
+  };
+
+  auto unsafe_overlap = [&](const extended_overlap &overlap) -> bool {
+    return (//overlap.ol_type == OverlapType::perfect_heterozygous_low_mismatch ||
+            overlap.ol_type == OverlapType::perfect_heterozygous_high_mismatch ||
+            //overlap.ol_type == OverlapType::high_heterozygous_low_mismatch ||
+            overlap.ol_type == OverlapType::high_heterozygous_high_mismatch ||
+            overlap.ol_type == OverlapType::mid_heterozygous_low_mismatch ||
+            overlap.ol_type == OverlapType::mid_heterozygous_high_mismatch ||
+            overlap.ol_type == OverlapType::low_heterozygous_low_mismatch ||
+            overlap.ol_type == OverlapType::low_heterozygous_high_mismatch);
+  };
+
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
     std::uint32_t k = 0;
     for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
@@ -580,30 +638,62 @@ void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosou
         continue;
       }
       std::uint32_t type = overlap_type(extended_overlaps[i][j].overlap, graph_);
-      if (type == 1 &&
-        !graph_.piles_[extended_overlaps[i][j].overlap.rhs_id]->is_maybe_chimeric()) {
+      extended_overlaps[i][j].graph_overlap_type = type;
+      if (type == 1 && !graph_.piles_[i]->is_maybe_chimeric()) {
         graph_.piles_[i]->set_is_contained();
-      } else if (type == 2 &&
-        !graph_.piles_[i]->is_maybe_chimeric()) {
+      } else if (type == 2 && !graph_.piles_[extended_overlaps[i][j].overlap.rhs_id]->is_maybe_chimeric()) {
         graph_.piles_[extended_overlaps[i][j].overlap.rhs_id]->set_is_contained();
-      } else {
-        extended_overlaps[i][k++] = extended_overlaps[i][j]; // might be fine to remove temporarily
-      }
+      } 
+      else {
+        //if(safe_overlap(extended_overlaps[i][j])){
+          extended_overlaps[i][k++] = extended_overlaps[i][j]; // might be fine to remove temporarily
+        //};
+       }
     }
     extended_overlaps[i].resize(k); // this with the above line might be fine to remove
   }
 
-//  std::vector<std::vector<biosoup::Overlap>> overlaps(sequences.size());
-//
-//  for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
-//    if (graph_.piles_[i]->is_contained()) {
-//      // if(graph_.annotations_[i].size() < 3){
-//
-//      // }
-//      graph_.piles_[i]->set_is_invalid();
-//      std::vector<biosoup::Overlap>().swap(overlaps[i]);
-//    }
-//  }
+
+  std::cerr << "[raven::Graph::Construct] removed contained sequences "
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+}
+
+void Graph_Constructor::ResolveContainedReadsGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                            std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                            biosoup::Timer &timer){
+  timer.Start();
+
+  auto safe_overlap = [&](const extended_overlap &overlap) -> bool {
+    return (overlap.ground_truth);
+  };
+
+  for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
+    std::uint32_t k = 0;
+    for (std::uint32_t j = 0; j < extended_overlaps[i].size(); ++j) {
+      if (!overlap_update(extended_overlaps[i][j].overlap, graph_)) {
+        continue;
+      }
+      //std::uint32_t type = overlap_type(extended_overlaps[i][j].overlap, graph_);
+      //extended_overlaps[i][j].graph_overlap_type = type;
+      //if (type == 1 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+      //if (extended_overlaps[i][j].graph_overlap_type == 1 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+      if (extended_overlaps[i][j].graph_overlap_type == 1 && safe_overlap(extended_overlaps[i][j])) {
+        graph_.piles_[i]->set_is_contained();
+      } else //if (type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+      //  if (extended_overlaps[i][j].graph_overlap_type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+      if (extended_overlaps[i][j].graph_overlap_type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+        graph_.piles_[extended_overlaps[i][j].overlap.rhs_id]->set_is_contained();
+      } 
+     else {
+       if(safe_overlap(extended_overlaps[i][j])){
+         extended_overlaps[i][k++] = extended_overlaps[i][j]; // might be fine to remove temporarily
+       };
+      }
+    }
+   extended_overlaps[i].resize(k); // this with the above line might be fine to remove
+  }
+
 
   std::cerr << "[raven::Graph::Construct] removed contained sequences "
             << std::fixed << timer.Stop() << "s"
@@ -682,11 +772,10 @@ void Graph_Constructor::ResolveChimericSequences(std::vector<std::unique_ptr<bio
             << std::endl;
 }
 
-void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                                                std::vector<std::vector<extended_overlap>> &overlaps,
                                                biosoup::Timer &timer,
-                                               Program_Parameters &param) {
-
+                                               Program_Parameters &param){
   std::ofstream outdata_invalid;
   outdata_invalid.open("invalid_reads.txt");
   for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
@@ -702,12 +791,33 @@ void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<bioso
       outdata_contained << sequences[i]->name << std::endl;
     }
   }
+  std::uint16_t n_phases = 5;
+
+  std::vector<std::vector<OverlapType>> overlaps_per_phase(n_phases);
+
+  overlaps_per_phase[0] = {OverlapType::perfect_heterozygous_high_match};
+
+  overlaps_per_phase[1] = {OverlapType::perfect_homozygous,
+                           OverlapType::perfect_heterozygous_low_match,
+  };
+
+  overlaps_per_phase[2] = {OverlapType::high_homozygous,
+                           OverlapType::high_heterozygous_low_match,
+  };
+
+  overlaps_per_phase[3] = {OverlapType::high_heterozygous_high_match};
+
+  overlaps_per_phase[4] = {OverlapType::mid_homozygous,
+                           OverlapType::mid_heterozygous_low_match,
+  };
 
   //exit(0);
   Node::num_objects = 0;
   Edge::num_objects = 0;
 
   std::vector<std::int32_t> sequence_to_node(graph_.piles_.size(), -1);
+
+  
   for (const auto &it : graph_.piles_) {  // create nodes
     if (it->is_invalid() || it->is_contained() || overlaps[it->id()].empty()) {
       continue;
@@ -766,6 +876,49 @@ void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<bioso
 
   graph_.PrintOverlaps(overlaps, sequences, true, param.paf_before_parsing_edges_filename);
 
+  auto check_if_overlap_type_in_phase = [&](const extended_overlap &overlap, std::uint8_t phase) -> bool {
+    return std::find(overlaps_per_phase[phase].begin(), overlaps_per_phase[phase].end(), overlap.ol_type) != overlaps_per_phase[phase].end();
+  };
+
+  auto return_viable_overlaps = [&](const std::vector<extended_overlap> &overlaps, raven::Graph graph_) -> std::vector<extended_overlap>{
+    
+  };
+
+  for(std::uint8_t round; round < n_phases; round++){
+    std::cerr << "Phase: " << round << std::endl;
+    for (const auto &it: graph_.piles_){
+      if (it->is_invalid() || it->is_contained() || overlaps[it->id()].empty()) {
+        continue;
+      }
+    bool any_edge = false;
+
+    for(int j = 0; j < (int)overlaps[it->id()].size(); j++){
+      if(overlap_type(overlaps[it->id()][j].overlap, graph_) > 2 && check_if_overlap_type_in_phase(overlaps[it->id()][j], round)){
+        if(!graph_.piles_[overlaps[it->id()][j].overlap.rhs_id]->is_invalid()){
+          continue;
+        }
+          any_edge = true;
+          break;
+      }
+    }
+    if (!any_edge) {
+      continue;
+    }
+    }
+  };
+
+  auto safe_overlap = [&](const extended_overlap &overlap) -> bool {
+  return (overlap.ol_type == OverlapType::perfect_heterozygous_low_match ||
+          overlap.ol_type == OverlapType::perfect_heterozygous_high_match ||//); // ||
+          overlap.ol_type == OverlapType::perfect_homozygous ||
+          overlap.ol_type == OverlapType::high_heterozygous_low_match ||
+          overlap.ol_type == OverlapType::high_heterozygous_high_match || // ||
+          overlap.ol_type == OverlapType::high_homozygous ||
+          overlap.ol_type == OverlapType::mid_heterozygous_high_match); 
+  // return true;
+  };
+
+
   for (int i = 0; i < (int)overlaps.size(); i++) {
 
     for (auto &it : overlaps[i]) {  // create edges
@@ -773,6 +926,102 @@ void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<bioso
       if (!overlap_finalize(it.overlap, graph_)) {
         continue;
       }
+
+      counter++;
+      auto tail_seq_id = sequence_to_node[it.overlap.lhs_id];
+      auto head_seq_id = sequence_to_node[it.overlap.rhs_id];
+
+      if(!safe_overlap(it)){ 
+        continue;
+      }
+
+      if (tail_seq_id == -1 || head_seq_id == -1) {
+        continue;
+      }
+      auto tail = graph_.nodes_[sequence_to_node[it.overlap.lhs_id]].get();
+      auto head = graph_.nodes_[sequence_to_node[it.overlap.rhs_id] + 1 - it.overlap.strand].get();
+
+      auto length = it.overlap.lhs_begin - it.overlap.rhs_begin;
+      auto length_pair =
+        (graph_.piles_[it.overlap.rhs_id]->length() - it.overlap.rhs_end) -
+          (graph_.piles_[it.overlap.lhs_id]->length() - it.overlap.lhs_end);
+
+      if (it.overlap.score == 4) {
+        std::swap(head, tail);
+        length *= -1;
+        length_pair *= -1;
+      }
+
+      auto edge = std::make_shared<Edge>(tail, head, length);
+      graph_.edges_.emplace_back(edge);
+      graph_.edges_.emplace_back(std::make_shared<Edge>(head->pair, tail->pair, length_pair));  // NOLINT
+      edge->pair = graph_.edges_.back().get();
+      edge->pair->pair = edge.get();
+
+    }
+  }
+  
+
+  std::cerr << "[raven::Graph::Construct] stored " << graph_.edges_.size() << " edges "  // NOLINT
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  graph_.PrintGfa(param.gfa_after_construction_filename, false);                                                
+};
+
+void Graph_Constructor::ConstructOverlapGraph(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                                               std::vector<std::vector<extended_overlap>> &overlaps,
+                                               biosoup::Timer &timer,
+                                               Program_Parameters &param) {
+
+  std::vector<std::int32_t> sequence_to_node(graph_.piles_.size(), -1);
+  for (const auto &it : graph_.piles_){
+    if(it->is_invalid()){
+      continue;
+    }
+    std::unordered_set<std::uint32_t> annotations;
+    for (const auto &jt : graph_.annotations_[it->id()]) {
+      if (it->begin() <= jt && jt < it->end()) {
+        annotations.emplace(jt - it->begin());
+      }
+    }
+    graph_.annotations_[it->id()].swap(annotations);
+
+    auto sequence = biosoup::NucleicAcid{
+      sequences[it->id()]->name,
+      sequences[it->id()]->InflateData(it->begin(), it->end() - it->begin()) };  // NOLINT
+    sequence.id = it->id();
+
+    sequence_to_node[it->id()] = Node::num_objects;
+
+    auto node = std::make_shared<Node>(sequence);
+    sequence.ReverseAndComplement();
+    graph_.nodes_.emplace_back(node);
+    graph_.nodes_.emplace_back(std::make_shared<Node>(sequence));
+    node->pair = graph_.nodes_.back().get();
+    node->pair->pair = node.get();
+
+    if (it->id() < param.split) {
+      node->color = 1;
+      node->pair->color = 1;
+    }
+  }
+  std::cerr << "[raven::Graph::ConstructOverlapGraph] stored " << graph_.nodes_.size() << " nodes "  // NOLINT
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  timer.Start();
+  int counter = 0;
+
+  for (int i = 0; i < (int)overlaps.size(); i++) {
+
+    for (auto &it : overlaps[i]) {  // create edges
+
+      // if (!overlap_finalize(it.overlap, graph_)) {
+      //   continue;
+      // }
+
+      it.overlap.score = overlap_type(it.overlap, graph_);
 
       counter++;
       auto tail_seq_id = sequence_to_node[it.overlap.lhs_id];
@@ -804,7 +1053,167 @@ void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<bioso
     }
   }
 
-  std::cerr << "[raven::Graph::Construct] stored " << graph_.edges_.size() << " edges "  // NOLINT
+  std::cerr << "[raven::Graph::ConstructOverlapGraph] stored " << graph_.edges_.size() << " edges "  // NOLINT
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  graph_.PrintGfa(param.gfa_after_overlap_graph_construction_filename, false);  
+
+  };
+
+void Graph_Constructor::ConstructAssemblyGraph(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                                               std::vector<std::vector<extended_overlap>> &overlaps,
+                                               biosoup::Timer &timer,
+                                               Program_Parameters &param) {
+
+  std::ofstream outdata_invalid;
+  outdata_invalid.open("invalid_reads.txt");
+  for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
+    if (graph_.piles_[i]->is_invalid()) {
+      outdata_invalid << sequences[i]->name << std::endl;
+    }
+  }
+
+  std::ofstream outdata_contained;
+  outdata_contained.open("contained_reads.txt");
+  for (std::uint32_t i = 0; i < graph_.piles_.size(); ++i) {
+    if (graph_.piles_[i]->is_contained()) {
+      outdata_contained << sequences[i]->name << std::endl;
+    }
+  }
+  graph_.nodes_.clear();
+  graph_.edges_.clear();
+
+  //exit(0);
+  Node::num_objects = 0;
+  Edge::num_objects = 0;
+
+  std::vector<std::int32_t> sequence_to_node(graph_.piles_.size(), -1);
+  for (const auto &it : graph_.piles_) {  // create nodes
+    if (it->is_invalid() || it->is_contained()) {
+      continue;
+    }
+
+    bool any_edge = false;
+
+    // for (int j = 0; j < (int)overlaps[it->id()].size(); j++) {
+    //   if (overlap_type(overlaps[it->id()][j].overlap, graph_) > 2) {
+    //     if (!graph_.piles_[overlaps[it->id()][j].overlap.rhs_id]->is_invalid()) {
+    //       any_edge = true;
+    //       break;
+    //     }
+    //   }
+    // }
+
+    // if (!any_edge) {
+    //   continue;
+    // }
+
+    std::unordered_set<std::uint32_t> annotations;
+    for (const auto &jt : graph_.annotations_[it->id()]) {
+      if (it->begin() <= jt && jt < it->end()) {
+        annotations.emplace(jt - it->begin());
+      }
+    }
+    graph_.annotations_[it->id()].swap(annotations);
+
+    auto sequence = biosoup::NucleicAcid{
+      sequences[it->id()]->name,
+      sequences[it->id()]->InflateData(it->begin(), it->end() - it->begin()) };  // NOLINT
+    sequence.id = it->id();
+
+    sequence_to_node[it->id()] = Node::num_objects;
+
+    auto node = std::make_shared<Node>(sequence);
+    sequence.ReverseAndComplement();
+    graph_.nodes_.emplace_back(node);
+    graph_.nodes_.emplace_back(std::make_shared<Node>(sequence));
+    node->pair = graph_.nodes_.back().get();
+    node->pair->pair = node.get();
+
+    if (it->id() < param.split) {
+      node->color = 1;
+      node->pair->color = 1;
+    }
+  }
+
+  std::cerr << "[raven::Graph::ConstructAssemblyGraph] stored " << graph_.nodes_.size() << " nodes "  // NOLINT
+            << std::fixed << timer.Stop() << "s"
+            << std::endl;
+
+  timer.Start();
+
+  int counter = 0;
+  using edge_check = std::pair<std::uint32_t, std::uint32_t>;
+
+  struct EdgeHash {
+      std::size_t operator()(const edge_check& e) const {
+          return std::hash<std::uint32_t>()(e.first) ^ (std::hash<std::uint32_t>()(e.second) << 1);
+      }
+  };
+  std::unordered_set<edge_check, EdgeHash> used_edges;
+
+  graph_.PrintOverlaps(overlaps, sequences, true, param.paf_before_parsing_edges_filename);
+
+  for (int i = 0; i < (int)overlaps.size(); i++) {
+
+    for (auto &it : overlaps[i]) {  // create edges
+
+      // if (!overlap_finalize(it.overlap, graph_)) {
+      //   std::cerr << "Error in overlap finalization" << std::endl;
+      //   continue;
+      // }
+      it.overlap.score = overlap_type(it.overlap, graph_);
+
+      // if (MLOverlapResolve(it) != 1){
+      //   continue;
+      // }
+      // if(it.ground_truth == false){
+      //   continue;
+      // }
+      counter++;
+      auto tail_seq_id = sequence_to_node[it.overlap.lhs_id];
+      auto head_seq_id = sequence_to_node[it.overlap.rhs_id];
+
+      if (tail_seq_id == -1 || head_seq_id == -1) {
+        continue;
+      }
+      
+      std::uint32_t a = std::min(tail_seq_id, head_seq_id);
+      std::uint32_t b = std::max(tail_seq_id, head_seq_id);
+      edge_check edge_ids = {a, b};
+
+      if (used_edges.count(edge_ids)) {
+          continue;
+      } else {
+          used_edges.insert(edge_ids);
+      }
+
+
+      auto tail = graph_.nodes_[sequence_to_node[it.overlap.lhs_id]].get();
+      auto head = graph_.nodes_[sequence_to_node[it.overlap.rhs_id] + 1 - it.overlap.strand].get();
+
+      auto length = it.overlap.lhs_begin - it.overlap.rhs_begin;
+      auto length_pair =
+        (graph_.piles_[it.overlap.rhs_id]->length() - it.overlap.rhs_end) -
+          (graph_.piles_[it.overlap.lhs_id]->length() - it.overlap.lhs_end);
+
+      if (it.overlap.score == 4) {
+        std::swap(head, tail);
+        length *= -1;
+        length_pair *= -1;
+      }
+
+      auto edge = std::make_shared<Edge>(tail, head, length);
+      graph_.edges_.emplace_back(edge);
+      graph_.edges_.emplace_back(std::make_shared<Edge>(head->pair, tail->pair, length_pair));  // NOLINT
+      edge->pair = graph_.edges_.back().get();
+      edge->pair->pair = edge.get();
+
+    }
+  }
+
+  std::cerr << "[raven::Graph::ConstructAssemblyGraph] stored " << graph_.edges_.size() << " edges "  // NOLINT
             << std::fixed << timer.Stop() << "s"
             << std::endl;
 
@@ -815,6 +1224,7 @@ void Graph_Constructor::PrintPiles(const std::vector<std::unique_ptr<biosoup::Nu
 
   std::ofstream outdata;
   outdata.open("piles.csv");
+  std::cout << "Writing pile data to piles.csv" << std::endl;
   for (int i = 0; i < (int)graph_.piles_.size(); i++) {
     outdata << sequences[i].get()->name << ",";
     if (graph_.piles_[i]->get_data().empty()) {
@@ -828,6 +1238,100 @@ void Graph_Constructor::PrintPiles(const std::vector<std::unique_ptr<biosoup::Nu
 
   }
 }
+
+void Graph_Constructor::LoadGTOverlaps(const std::string &overlaps_path,
+                                        std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                                        std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                                        bool load_cigar){
+  std::ifstream file(overlaps_path);
+  if (!file.is_open()) {
+    throw std::runtime_error("Error opening file: " + overlaps_path);
+  }
+
+  std::map<std::string, std::uint32_t> sequence_name_to_seq_id;
+  for (std::uint32_t i = 0; i < sequences.size(); ++i) {
+    sequence_name_to_seq_id[sequences[i]->name] = sequences[i]->id;
+  }
+
+  std::cerr << "[raven::Graph::LoadHerroSNPs] loading overlaps from: " << overlaps_path << std::endl;
+  std::string line;
+  while (std::getline(file, line)) {
+    std::istringstream iss(line);
+    std::string item;
+    std::vector<std::string> items;
+    std::uint32_t lhs_seq_id;
+    std::uint32_t rhs_seq_id;
+
+    while (std::getline(iss, item, '\t')) {
+      items.push_back(item);
+    };
+
+    // lhs_seq_id = get_read_id(items[0], sequences);
+    lhs_seq_id = sequence_name_to_seq_id[items[0]];
+    // rhs_seq_id = get_read_id(items[5], sequences);
+    rhs_seq_id = sequence_name_to_seq_id[items[5]];
+
+    if (lhs_seq_id == (std::uint32_t )-1 || rhs_seq_id == (std::uint32_t )-1) {
+      continue;
+    } else {
+      biosoup::Overlap overlap{ lhs_seq_id, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]),
+                                rhs_seq_id, (std::uint32_t)std::stoi(items[7]), (std::uint32_t)std::stoi(items[8]),
+                                255, items[4] == "+" ? true : false};
+      edlib_align tmp;
+      if (load_cigar) {
+        std::stringstream ss(items[16]);
+        std::string segment;
+        std::vector<std::string> seglist;
+        while (std::getline(ss, segment, ':')) {
+          seglist.push_back(segment);
+        }
+        tmp = { 0, 0, seglist[2], 0 };
+      } else {
+        tmp = {};
+      }
+      extended_overlap total_ovlp{};
+      total_ovlp.overlap = overlap;
+      total_ovlp.edlib_alignment = tmp;
+      total_ovlp.total_overlap_snps = (std::uint32_t)std::stoi(items[17]);
+      total_ovlp.total_overlap_snp_mismatches = (std::uint32_t)std::stoi(items[18]);
+      total_ovlp.identity = (float)std::stoi(items[19]);
+      total_ovlp.heterozygosity_rate = (float)std::stoi(items[20]);
+      total_ovlp.graph_overlap_type = (std::uint8_t)std::stoi(items[21]);
+      total_ovlp.ol_type = OverlapType::perfect_heterozygous_high_match;
+      total_ovlp.ol_class = items[24] == "same_strand" ? 1 : 0;
+      total_ovlp.ground_truth = (std::uint8_t)std::stoi(items[26]) == 1 ? true : false;
+    // extended_overlap total_ovlp{overlap, tmp, 
+    //                             (std::uint32_t)std::stoi(items[19]), (std::uint32_t)std::stoi(items[20]),
+    //                             (std::uint32_t)std::stoi(items[21]), (std::uint32_t)std::stoi(items[20]),
+    //                             (std::uint32_t)std::stoi(items[18]), OverlapType::perfect_heterozygous_high_match,
+    //                             items[24] == "same_strand" ? 1 : 0};
+      extended_overlaps[lhs_seq_id].emplace_back(total_ovlp);
+    }
+  }
+  std::cerr << "[raven::Graph::LoadHerroSNPs] loaded overlaps from: " << overlaps_path << std::endl;
+  std::vector<std::future<void>> extended_layers_futures;
+  std::uint16_t counter = 0;
+  for (const auto &it : graph_.piles_) {
+    counter += 1;
+    //std::cerr << counter << std::endl;
+    if (extended_overlaps[it->id()].empty()) {
+      continue;
+    }
+    extended_layers_futures.emplace_back(thread_pool_->Submit(
+      [&]() -> void {
+        it->AddExtendedLayers(
+          extended_overlaps[it->id()].begin(),
+          extended_overlaps[it->id()].end());
+
+      }));
+  }
+
+  for (const auto &it : extended_layers_futures) {
+    it.wait();
+  }
+
+  extended_layers_futures.clear();
+};
 
 void Graph_Constructor::LoadOverlaps(const std::string &overlaps_path,
                                      std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
@@ -866,7 +1370,7 @@ void Graph_Constructor::LoadOverlaps(const std::string &overlaps_path,
     } else {
       biosoup::Overlap overlap{ lhs_seq_id, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]),
                                 rhs_seq_id, (std::uint32_t)std::stoi(items[7]), (std::uint32_t)std::stoi(items[8]),
-                                255, items[4] == "+" };
+                                255, items[4] == "+" ? true : false};
       edlib_align tmp;
       if (load_cigar) {
         std::stringstream ss(items[16]);

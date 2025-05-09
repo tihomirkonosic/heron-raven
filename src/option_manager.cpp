@@ -18,6 +18,7 @@ enum program_opt {
   opt_input_paf,
   opt_paf,
   opt_load_paf,
+  opt_load_gt_overlaps,
   opt_print_gfa_seq,
 
   opt_kmer_len,
@@ -56,6 +57,7 @@ static struct option options[] = {
     {"input-paf", required_argument, nullptr, opt_input_paf},
     {"paf", no_argument, nullptr, opt_paf},
     {"load-paf", required_argument, nullptr, opt_load_paf},
+    {"load-gt-overlaps", required_argument, nullptr, opt_load_gt_overlaps},
     {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
 
     {"kmer-len", required_argument, nullptr, opt_kmer_len},
@@ -226,6 +228,7 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
           param.root_path = path_prefix.string();
 
           param.gfa_path = param.root_path + "_" + param.gfa_path;
+          param.gfa_after_overlap_graph_construction_filename = param.root_path + "_" + param.gfa_after_overlap_graph_construction_filename;
           param.gfa_after_construction_filename = param.root_path + "_" + param.gfa_after_construction_filename;
           param.gfa_after_transitive_filename = param.root_path + "_" + param.gfa_after_transitive_filename;
           param.gfa_after_bubble_filename = param.root_path + "_" + param.gfa_after_bubble_filename;
@@ -259,6 +262,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_load_paf:
         param.load_paf = optarg;
+        break;
+      case opt_load_gt_overlaps:
+        param.gt_overlaps = optarg;
         break;
       case opt_print_gfa_seq:
         param.print_gfa_seq = true;
