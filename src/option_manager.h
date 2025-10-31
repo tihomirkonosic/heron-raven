@@ -10,13 +10,14 @@ struct Program_Parameters {
 
   std::uint8_t ploidy = 2;
 
-  std::uint8_t kmer_len = 15;
-  std::uint8_t window_len = 7;
-  std::uint16_t bandwidth = 500;
-  std::uint16_t chain_n = 3;
-  std::uint16_t match_n = 75;
-  std::uint16_t gap_size = 10000;
-  double freq = 0.001;
+  std::uint8_t kmer_len = 51;
+  std::uint8_t window_len = 51;
+  std::uint16_t bandwidth = 80;
+  std::uint16_t chain_n = 8;
+  std::uint16_t match_n = 250;
+  std::uint16_t gap_size = 200;
+  double fraction = 0.2; // fraction of sequences to use for kmer counting
+  double freq = 0.0001;
   bool hpc = false;
 
   std::string error_corrected_reads = "";

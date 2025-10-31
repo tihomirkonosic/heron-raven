@@ -57,6 +57,12 @@ private:
                     std::vector<std::vector<extended_overlap>> &extended_overlaps,
                     biosoup::Timer &timer,
                     Program_Parameters &param);
+
+  void MapSequencesFast(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                        std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                        biosoup::Timer &timer,
+                        Program_Parameters &param);
+                        
   void TrimAndAnnotatePiles(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                             std::vector<std::vector<extended_overlap>> &extended_overlaps,
                             biosoup::Timer &timer,
@@ -94,6 +100,8 @@ private:
                     std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                     std::vector<std::vector<extended_overlap>> &extended_overlaps,
                     bool load_cigar);
+  
+  void FindHistogramPeaks();
 
   Graph &graph_;
   std::shared_ptr<thread_pool::ThreadPool> thread_pool_;

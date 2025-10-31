@@ -123,6 +123,7 @@ namespace raven {
     std::vector<std::unordered_set<std::uint32_t>> annotations_compressed_;
     std::vector<std::vector<std::uint32_t>> anno_;
     std::vector<std::unique_ptr<Pile>> piles_;
+    //std::vector<std::vector<std::pair<std::unique_ptr<std::uint64_t>, std::uint16_t>>> minimizers_;
 
     std::vector<std::shared_ptr<Node>> unitig_nodes_;
     std::vector<std::shared_ptr<Edge>> unitig_edges_;

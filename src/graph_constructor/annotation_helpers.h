@@ -67,7 +67,6 @@ void find_pairwise_alignment(std::uint32_t i,
     auto rhs = rhs_.InflateData();
 
     it.edlib_alignment = edlib_wrapper(lhs, rhs);
-    it.ol_type = OverlapType::undefined;
   }
 }
 

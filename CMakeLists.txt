@@ -77,8 +77,12 @@ find_package(ram 1.0.0 QUIET)
 if (NOT ram_FOUND)
   FetchContent_Declare(
     ram
-    GIT_REPOSITORY https://github.com/kocijan/ram
-    GIT_TAG kocijan/hpc)
+    #GIT_REPOSITORY https://github.com/kocijan/ram
+    #GIT_TAG kocijan/hpc)
+    GIT_REPOSITORY https://github.com/FilipTomas/ram_count
+    GIT_TAG master
+    GIT_SUBMODULES "")
+    #GIT_TAG master)
 
   FetchContent_GetProperties(ram)
   if (NOT ram_POPULATED)
@@ -137,6 +141,7 @@ add_library(raven
   src/graph_assembler/graph_assembler.cpp
   src/option_manager.cpp
   src/graph_constructor/overlap_parser.cpp
+  src/graph_constructor/ram_overlap.cpp
   #src/extended_overlap.cpp
   #src/read_preprocessing.cpp
 )

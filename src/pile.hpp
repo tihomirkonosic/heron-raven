@@ -38,6 +38,16 @@ namespace raven {
       return data_;
     }
 
+    std::vector<std::uint16_t> get_sketch_data() const {
+      return sketch_data_;
+    }
+
+    std::vector<std::uint64_t> get_k_kmer_ids() const {
+      return k_mer_ids_;
+    }
+
+    void check_HOR(std::uint32_t hom_peak);
+
     std::uint32_t id() const {
       return id_;
     }
@@ -94,6 +104,14 @@ namespace raven {
       is_repetitive_ = true;
     }
 
+    bool is_hor() const {
+      return is_hor_;
+    }
+
+    void set_is_hor() {
+      is_hor_ = true;
+    }
+
     // add coverage
     void AddLayers(
         std::vector<biosoup::Overlap>::const_iterator begin,
@@ -140,6 +158,10 @@ namespace raven {
     // remove all repetitive regions
     void ClearRepetitiveRegions();
 
+    void set_sketch(std::vector<std::uint16_t> sketch);
+
+    void set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids);
+
   private:
     Pile() = default;
 
@@ -181,7 +203,10 @@ namespace raven {
     bool is_contained_;
     bool is_chimeric_;
     bool is_repetitive_;
+    bool is_hor_;
     std::vector<std::uint16_t> data_;
+    std::vector<std::uint16_t> sketch_data_;
+    std::vector<std::uint64_t> k_mer_ids_;
     std::vector<bool> kmers_;
     std::vector<Region> chimeric_regions_;
     std::vector<Region> repetitive_regions_;

@@ -2,6 +2,7 @@
 #include <cmath>
 #include <deque>
 #include <fstream>
+#include <cassert>
 #include "graph.hpp"
 #include "graph_constructor.h"
 #include "overlap.h"
@@ -12,8 +13,68 @@
 #include "extended_overlap.h"
 #include "overlap_helpers.h"
 #include "annotation_helpers.h"
+#include "ram_overlap.h"
 
 namespace raven {
+
+static inline ram_overlap
+start_group(const biosoup::Overlap& ov) {
+    extended_overlap eo = {ov, {}, 0, 0};
+    ram_overlap ro;
+    ro.lhs_id = ov.lhs_id;          // adapt to your field names
+    ro.rhs_id = ov.rhs_id;
+
+    ro.lhs_begin = ov.lhs_begin;    // first fragment → starts here
+    ro.lhs_end   = ov.lhs_end;      // will be updated as we append
+    ro.rhs_begin = ov.rhs_begin;
+    ro.rhs_end   = ov.rhs_end;
+    ro.n_fragments = 1;
+
+    ro.overlap_fragments.push_back(eo);
+    return ro;
+}
+
+std::vector<ram_overlap>
+merge_fragments(const std::vector<biosoup::Overlap>& ovlps)
+{
+    std::vector<ram_overlap> result;
+    result.reserve(ovlps.size());         // upper bound
+
+    if (ovlps.empty()){
+        return result;
+    }
+
+    // begin first group
+    ram_overlap curr = start_group(ovlps.front());
+    curr.n_fragments = 1;
+
+    for (std::size_t i = 1; i < ovlps.size(); ++i) {
+        const auto& ov = ovlps[i];
+
+        bool same_pair =
+            (ov.lhs_id == curr.lhs_id && ov.rhs_id == curr.rhs_id);
+
+        if (!same_pair) {
+            // commit the finished group
+            result.push_back(std::move(curr));
+            curr = start_group(ov);       // start new group
+        } else {
+            // extend current aggregate
+            curr.overlap_fragments.push_back(extended_overlap {ov, {}, 0, 0});
+            if (curr.lhs_begin > ov.lhs_begin){
+                curr.lhs_begin = ov.lhs_begin;
+            } else if (curr.lhs_end < ov.lhs_end) {
+                curr.lhs_end = ov.lhs_end;
+            };
+            // curr.lhs_end = ov.lhs_end;    // ovlps are ordered by lhs_begin
+            // curr.rhs_end = ov.rhs_end;
+            curr.n_fragments++;
+        }
+    }
+    result.push_back(std::move(curr));    // flush last group
+    return result;
+}
+
 Graph_Constructor::Graph_Constructor(Graph &graph, std::shared_ptr<thread_pool::ThreadPool> thread_pool)
   : graph_(graph), thread_pool_(thread_pool ?
                                 thread_pool :
@@ -85,19 +146,67 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
   }
 
+  //   for (const auto &it : sequences) {
+  //   graph_.minimizers_.emplace_back(new std::vector<std::pair<std::uint64_t, std::uint16_t>>());
+  // }
+
   bool load_cigar = false;
   if (!param.load_paf.empty()) {
     LoadOverlapsFromPaf(sequences, extended_overlaps, load_cigar, param);
   } else {
-    MapSequences(sequences, extended_overlaps, timer, param);
+    MapSequencesFast(sequences, extended_overlaps, timer, param);
+    //MapSequences(sequences, extended_overlaps, timer, param);
   }
+/*
+  std::ofstream outdata;
+  outdata.open("minimizer_piles_multi.csv");
+  std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
+  for (int i = 0; i < (int)graph_.piles_.size(); i++) {
+    outdata << sequences[i].get()->name << "\t";
+    auto kmer_data = graph_.piles_[i]->get_sketch_data();
+    //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+    if (kmer_data.size() == 0) {
+      continue;
+    }
+   // std::vector<uint16_t> coverages = kmer_data.second;
+    for (int i = 0; i < (int)kmer_data.size(); i++) {
+      outdata << kmer_data[i] << ",";;
+    }
+    outdata << "\t";
+    auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+    for (int i = 0; i < (int)kmer_ids.size();i++) {
+        outdata << kmer_ids[i] << ",";;
+      }
+    outdata << std::endl;
 
+  };
+
+  outdata.close();
+  // outdata.open("minimizer_piles_multi_ids.csv");
+  // std::cout << "Writing pile data to minimizer_piles_multi_ids.csv" << std::endl;
+  // for (int i = 0; i < (int)graph_.piles_.size(); i++) {
+  //   outdata << sequences[i].get()->name << "\t";
+  //   auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+  //   if (kmer_ids.size() == 0) {
+  //     continue;
+  //   }
+  //  // std::vector<uint16_t> coverages = kmer_data.second;
+  //   for (int i = 0; i < (int)kmer_ids.size(); i++) {
+  //     outdata << kmer_ids[i] << ",";;
+  //   }
+  //   outdata << std::endl;
+
+  // }
+  exit(0);
+
+  PrintPiles(sequences);
+*/
   graph_.PrintOverlaps(extended_overlaps, sequences, true, param.paf_initial_overlaps_filename);
   std::cerr << "[raven::Graph::Construct] initial overlaps printed"
             << std::endl;
 
-  PrintPiles(sequences);
-
+  //PrintPiles(sequences);
+  exit(0);
   TrimAndAnnotatePiles(sequences, extended_overlaps, timer, param);
 
   if (!load_cigar) {
@@ -146,6 +255,13 @@ void Graph_Constructor::ConstructOverlapsFromGT(std::vector<std::unique_ptr<bios
   for (const auto &it : sequences) {
     graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
   }
+  std::ofstream piles_tmp("piles_2.txt");
+  for (const auto &it : graph_.piles_) {
+    piles_tmp << it->id() << "\t" 
+              << sequences[it->id()]->name << "\t"
+              << it->get_data().size() << "\t"
+              << it->length() << std::endl;
+  }
   LoadGTOverlaps(param.gt_overlaps, sequences, extended_overlaps, false);
   graph_.PrintOverlaps(extended_overlaps, sequences, true, "gt_overlaps.paf");
   TrimAndAnnotatePiles(sequences, extended_overlaps, timer, param);
@@ -187,6 +303,253 @@ void Graph_Constructor::LoadOverlapsFromPaf(std::vector<std::unique_ptr<biosoup:
   extended_layers_futures.clear();
 }
 
+std::vector<std::pair<std::uint64_t, std::uint16_t>> window_min(const std::vector<std::pair<std::uint64_t, std::uint16_t>>& dst, std::uint16_t w_size = 64, bool keep_tail = true) {
+  std::vector<std::pair<std::uint64_t, std::uint16_t>> mins;
+  mins.reserve(dst.size() / w_size + 1);
+
+  for (std::size_t i = 0; i < dst.size(); i += w_size) {
+      std::size_t block_end = std::min<std::size_t>(i + w_size, dst.size());
+      if (!keep_tail && block_end - i < w_size) break;   // drop short tail
+
+      auto min_pair = *std::min_element(
+          dst.begin() + i,
+          dst.begin() + block_end,
+          [](const auto& a, const auto& b) {
+              return a.second < b.second;
+          }
+      );
+      mins.push_back(min_pair);
+  }
+  return mins;   // one value per w_size window
+}
+
+void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                                     std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                                     biosoup::Timer &timer,
+                                     Program_Parameters &param){
+  std::size_t bytes = 0;
+
+  ram::MinimizerEngine minimizer_engine{
+    thread_pool_,
+    param.kmer_len,
+    param.window_len,
+    param.bandwidth,
+    param.chain_n,
+    param.match_n,
+    param.gap_size
+  };
+
+  auto sketch_sequence = [&](std::uint32_t i) -> void {
+    auto tmp = minimizer_engine.SketchRead(sequences[i], param.kmer_len);
+    //auto tmp_2 = window_min(tmp);
+    std::vector<std::uint16_t> sketch {};
+    std::vector<std::uint64_t> ids {};
+    for(auto &element : tmp){
+      sketch.push_back(element.second);
+      ids.push_back(element.first);
+    }
+    graph_.piles_[i]->set_k_kmer_ids(ids);
+    graph_.piles_[i]->set_sketch(sketch);
+
+    graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
+    // here should come the code that translates the sketch into calls 
+  };
+
+  auto map_sequences = [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
+    std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
+                                                               false);
+
+
+    if (!ovlps.empty()) {
+      std::vector<extended_overlap> ovlps_final;
+      std::vector<extended_overlap> ovlps_tmp;
+      std::vector<ram_overlap> fragmented_ovlps;
+      //resolve multiple mappings between same pair of sequences
+      fragmented_ovlps = merge_fragments(ovlps);
+
+      for(auto& fragmented_ovlp : fragmented_ovlps){
+        auto tmp = fragmented_ovlp.resolve();
+        ovlps_tmp.insert(ovlps_tmp.end(), tmp.begin(), tmp.end());
+       // ovlps_tmp.emplace_back(fragmented_ovlp.resolve());
+      }
+
+      for(auto &ovlp: ovlps){
+        extended_overlap e_ovlp{ovlp, {}, 0, 0};
+        ovlps_tmp.emplace_back(e_ovlp);
+      }
+
+      std::sort(ovlps_tmp.begin(), ovlps_tmp.end(),
+                [&](const extended_overlap &lhs,
+                    const extended_overlap &rhs) -> bool {
+                  return overlap_length(lhs.overlap) > overlap_length(rhs.overlap);
+                });
+      return ovlps_tmp;
+      } else {
+      return {};
+    }
+       /*         
+      if(ovlps.size() > minimizer_engine.hom_peak()*1.5){
+        ovlps.resize(minimizer_engine.hom_peak()*1.5);
+      }
+
+      std::vector<biosoup::Overlap> tmp;
+
+      for (auto &ovlp : ovlps_tmp) {
+        if (overlap_length(ovlp.overlap) > sequences[i]->inflated_len*0.05) {
+
+          auto left_overhang = std::min(ovlp.overlap.lhs_begin, ovlp.overlap.rhs_begin);
+          auto right_overhang = std::min(sequences[i]->inflated_len - ovlp.overlap.lhs_end,
+                                          sequences[ovlp.overlap.rhs_id]->inflated_len - ovlp.overlap.rhs_end);
+
+          if(left_overhang < (param.window_len + param.kmer_len - 1)){
+            ovlp.overlap.lhs_begin = 0;
+            ovlp.overlap.rhs_begin = 0;
+          } else if (right_overhang < (param.window_len + param.kmer_len - 1)) {
+            ovlp.overlap.lhs_end = sequences[i]->inflated_len;
+            ovlp.overlap.rhs_end = sequences[ovlp.overlap.rhs_id]->inflated_len;
+          };
+
+          ovlp.overlap.lhs_begin = ovlp.overlap.lhs_begin - (param.window_len + param.kmer_len - 1) ? ovlp.overlap.lhs_begin
+            - (param.window_len + param.kmer_len - 1) : 0;
+          ovlp.overlap.lhs_end =
+            ovlp.overlap.lhs_end + (param.window_len + param.kmer_len - 1) < sequences[ovlp.overlap.lhs_id]->inflated_len ?
+            ovlp.overlap.lhs_end + (param.window_len + param.kmer_len - 1) : sequences[ovlp.overlap.lhs_id]->inflated_len;
+
+          ovlp.overlap.rhs_begin = ovlp.overlap.rhs_begin - (param.window_len + param.kmer_len - 1) ? ovlp.overlap.rhs_begin
+            - (param.window_len + param.kmer_len - 1) : 0;
+          ovlp.overlap.rhs_end =
+            ovlp.overlap.rhs_end + (param.window_len + param.kmer_len - 1) < sequences[ovlp.overlap.rhs_id]->inflated_len ?
+            ovlp.overlap.rhs_end + (param.window_len + param.kmer_len - 1) : sequences[ovlp.overlap.rhs_id]->inflated_len;
+
+          auto lhs = sequences[i]->InflateData(ovlp.overlap.lhs_begin, ovlp.overlap.lhs_end - ovlp.overlap.lhs_begin);
+
+          biosoup::NucleicAcid rhs_{ "",
+                                     sequences[ovlp.overlap.rhs_id]->InflateData(ovlp.overlap.rhs_begin,
+                                                                         ovlp.overlap.rhs_end - ovlp.overlap.rhs_begin) };
+
+          if (!ovlp.overlap.strand) rhs_.ReverseAndComplement();
+
+          auto rhs = rhs_.InflateData();
+
+          edlib_align tmp = edlib_wrapper(lhs, rhs);
+          if (static_cast<float>(tmp.matches) / tmp.block_length > 0.9) {
+            // edlib_align tmp;
+            biosoup::Overlap ovlp_tmp{ ovlp.overlap.lhs_id, ovlp.overlap.lhs_begin, ovlp.overlap.lhs_end,
+                                       ovlp.overlap.rhs_id, ovlp.overlap.rhs_begin, ovlp.overlap.rhs_end,
+                                       ovlp.overlap.score, ovlp.overlap.strand };
+
+            extended_overlap total_ovlp{ ovlp_tmp, tmp, 0, 0 };
+            ovlps_final.emplace_back(total_ovlp);
+          }
+        }
+
+      }
+      return ovlps_final;
+    }
+
+    // std::vector<extended_overlap> total_ovlps;
+    // return total_ovlps;*/
+  };
+
+  minimizer_engine.Count(sequences.begin(),
+                         sequences.begin() + static_cast<std::ptrdiff_t>(sequences.size()*param.fraction),
+                         //sequences.end(),
+                         param.fraction,
+                         false);  // count k-mers in preconstructed minimizer index
+  for (std::uint32_t i = 0, j = 0; i < sequences.size(); ++i) {
+    bytes += sequences[i]->inflated_len;
+    if (i != sequences.size() - 1 && bytes < (1ULL << 32)) {
+      continue;
+    }
+    bytes = 0;
+
+    timer.Start();
+
+    minimizer_engine.Minimize(
+      sequences.begin() + j,
+      sequences.begin() + i + 1,
+      true);
+
+    minimizer_engine.Filter(param.freq);
+
+    std::cerr << "aaaaaaaaaa" << std::endl;
+    std::cerr << "[raven::Graph::Construct] minimized "
+              << j << " - " << i + 1 << " / " << sequences.size() << " "
+              << std::fixed << timer.Stop() << "s"
+              << std::endl;
+
+    timer.Start();
+
+    std::vector<std::uint32_t> num_overlaps(extended_overlaps.size());
+    for (std::uint32_t k = 0; k < extended_overlaps.size(); ++k) {
+      num_overlaps[k] = extended_overlaps[k].size();
+    }
+  /*
+    std::vector<std::future<void>> sketch_futures;
+    for (std::uint32_t k = j; k < i + 1; ++k) {
+      sketch_futures.emplace_back(thread_pool_->Submit(sketch_sequence, k));
+    }
+    for (const auto &it : sketch_futures) {
+      it.wait();
+    }
+    sketch_futures.clear();
+    */
+    //std::vector<std::future<void>> thread_futures;
+    std::vector<std::future<std::vector<extended_overlap>>> thread_futures;
+    // for(auto &it : sequences){
+    //   map_sequences(it->id);
+    // }
+
+    for (std::uint32_t k = 0; k < i + 1; ++k) {
+      thread_futures.emplace_back(thread_pool_->Submit(map_sequences, k));
+
+      bytes += sequences[k]->inflated_len;
+      if (k != i && bytes < (1U << 30)) {
+        continue;
+      }
+      bytes = 0;
+
+      for (auto &it : thread_futures) {
+        for (const auto &jt : it.get()) {
+          extended_overlaps[jt.overlap.lhs_id].emplace_back(jt);
+          //overlaps.emplace_back(jt.overlap);
+          extended_overlaps[jt.overlap.rhs_id].emplace_back(cigar_extended_overlap_reverse(jt));
+          //overlaps.emplace_back(overlap_reverse(jt.overlap));
+        }
+      }
+      thread_futures.clear();
+    }
+
+    // std::vector<std::future<void>> void_futures;
+    // for (const auto &it : graph_.piles_) {
+    //   if (extended_overlaps[it->id()].empty()
+    //     || extended_overlaps[it->id()].size() == num_overlaps[it->id()]
+    //     ) {
+    //     continue;
+    //   }
+
+    //   void_futures.emplace_back(thread_pool_->Submit(
+    //     [&](std::uint32_t i) -> void {
+
+    //       graph_.piles_[i]->AddExtendedLayers(
+    //         extended_overlaps[i].begin(),
+    //         extended_overlaps[i].end());
+
+    //     },
+    //     it->id()));
+    // }
+    // for (const auto &it : void_futures) {
+    //   it.wait();
+    // }
+
+    std::cerr << "[raven::Graph::Construct] mapped sequences "
+              << std::fixed << timer.Stop() << "s"
+              << std::endl;
+
+    j = i + 1;
+  }
+}
+
 void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                                      std::vector<std::vector<extended_overlap>> &extended_overlaps,
                                      biosoup::Timer &timer,
@@ -205,20 +568,25 @@ void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::Nuclei
 
   auto map_sequences = [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
     std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
-                                                               true, param.hpc);
+                                                               false);
+
     if (!ovlps.empty()) {
       std::vector<extended_overlap> ovlps_final;
-
       std::sort(ovlps.begin(), ovlps.end(),
                 [&](const biosoup::Overlap &lhs,
                     const biosoup::Overlap &rhs) -> bool {
                   return overlap_length(lhs) > overlap_length(rhs);
                 });
+      
+      if(ovlps.size() > minimizer_engine.hom_peak()*1.5){
+        ovlps.resize(minimizer_engine.hom_peak()*1.5);
+      }
 
       std::vector<biosoup::Overlap> tmp;
 
       for (auto &ovlp : ovlps) {
-        if (overlap_length(ovlp) > 500) {
+        if (overlap_length(ovlp) > sequences[i]->inflated_len*0.05) {
+
           ovlp.lhs_begin = ovlp.lhs_begin - (param.window_len + param.kmer_len - 1) ? ovlp.lhs_begin
             - (param.window_len + param.kmer_len - 1) : 0;
           ovlp.lhs_end =
@@ -260,6 +628,10 @@ void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::Nuclei
     return total_ovlps;
   };
 
+  minimizer_engine.Count(sequences.begin(),
+                         sequences.begin() + static_cast<std::ptrdiff_t>(sequences.size()*param.fraction),
+                         param.fraction,
+                         false);  // count k-mers in preconstructed minimizer index
   for (std::uint32_t i = 0, j = 0; i < sequences.size(); ++i) {
     bytes += sequences[i]->inflated_len;
     if (i != sequences.size() - 1 && bytes < (1ULL << 32)) {
@@ -273,8 +645,10 @@ void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::Nuclei
       sequences.begin() + j,
       sequences.begin() + i + 1,
       true);
+
     minimizer_engine.Filter(param.freq);
 
+    std::cerr << "aaaaaaaaaa" << std::endl;
     std::cerr << "[raven::Graph::Construct] minimized "
               << j << " - " << i + 1 << " / " << sequences.size() << " "
               << std::fixed << timer.Stop() << "s"
@@ -517,77 +891,7 @@ void Graph_Constructor::ResolveOverlapType(std::vector<std::unique_ptr<biosoup::
       std::float_t heterozygosity_rate = static_cast<float>(snps) / static_cast<float>(extended_overlaps[i][j].edlib_alignment.block_length);
       extended_overlaps[i][j].identity = identity;
       extended_overlaps[i][j].heterozygosity_rate = heterozygosity_rate;
-      if (identity >= 0.999871){
-        if(heterozygosity_rate >= 0.005){
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_high_mismatch;
-          }
-        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::perfect_heterozygous_low_mismatch;
-          }
-        } else {
-          extended_overlaps[i][j].ol_type =  OverlapType::perfect_homozygous;
-        }
-      } else if (0.999377 < identity && identity < 0.999871)
-      {
-        if(heterozygosity_rate >= 0.005){
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_high_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_high_mismatch;
-          }
-        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::high_heterozygous_low_mismatch;
-          }
-        } else {
-          extended_overlaps[i][j].ol_type =  OverlapType::high_homozygous;
-        }
-      } else if(0.997505 < identity && identity <= 0.999377){
-        if(heterozygosity_rate >= 0.005){
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_high_mismatch;
-          }
-        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::mid_heterozygous_low_mismatch;
-          }
-        } else {
-          extended_overlaps[i][j].ol_type =  OverlapType::mid_homozygous;
-        }
-      } else if(identity <= 0.997505){
-        if(heterozygosity_rate >= 0.005){
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_high_mismatch;
-          }
-        } else if(heterozygosity_rate < 0.005 && heterozygosity_rate > 0) {
-          if(missmatch_rate < 0.1){
-            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_match;
-          } else {
-            extended_overlaps[i][j].ol_type =  OverlapType::low_heterozygous_low_mismatch;
-          }
-        } else {
-          extended_overlaps[i][j].ol_type =  OverlapType::low_homozygous;
-        }
-      } else {
-        extended_overlaps[i][j].ol_type =  OverlapType::other;
-      }
-      
-
-    };
+    }
   };
 
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
@@ -608,28 +912,6 @@ void Graph_Constructor::ResolveContainedReads(std::vector<std::unique_ptr<biosou
 
   timer.Start();
 
-  auto safe_overlap = [&](const extended_overlap &overlap) -> bool {
-    return (overlap.ol_type == OverlapType::perfect_heterozygous_low_match ||
-            overlap.ol_type == OverlapType::perfect_heterozygous_high_match ||//); // ||
-            
-            overlap.ol_type == OverlapType::high_heterozygous_low_match ||
-            overlap.ol_type == OverlapType::high_heterozygous_high_match); // ||
-            // overlap.ol_type == OverlapType::perfect_homozygous ||
-            // overlap.ol_type == OverlapType::high_homozygous ||
-            //overlap.ol_type == OverlapType::high_heterozygous_high_match); 
-   // return true;
-  };
-
-  auto unsafe_overlap = [&](const extended_overlap &overlap) -> bool {
-    return (//overlap.ol_type == OverlapType::perfect_heterozygous_low_mismatch ||
-            overlap.ol_type == OverlapType::perfect_heterozygous_high_mismatch ||
-            //overlap.ol_type == OverlapType::high_heterozygous_low_mismatch ||
-            overlap.ol_type == OverlapType::high_heterozygous_high_mismatch ||
-            overlap.ol_type == OverlapType::mid_heterozygous_low_mismatch ||
-            overlap.ol_type == OverlapType::mid_heterozygous_high_mismatch ||
-            overlap.ol_type == OverlapType::low_heterozygous_low_mismatch ||
-            overlap.ol_type == OverlapType::low_heterozygous_high_mismatch);
-  };
 
   for (std::uint32_t i = 0; i < extended_overlaps.size(); ++i) {
     std::uint32_t k = 0;
@@ -674,15 +956,15 @@ void Graph_Constructor::ResolveContainedReadsGT(std::vector<std::unique_ptr<bios
       if (!overlap_update(extended_overlaps[i][j].overlap, graph_)) {
         continue;
       }
-      //std::uint32_t type = overlap_type(extended_overlaps[i][j].overlap, graph_);
-      //extended_overlaps[i][j].graph_overlap_type = type;
+      std::uint32_t type = overlap_type(extended_overlaps[i][j].overlap, graph_);
+      extended_overlaps[i][j].graph_overlap_type = type;
       //if (type == 1 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
       //if (extended_overlaps[i][j].graph_overlap_type == 1 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
       if (extended_overlaps[i][j].graph_overlap_type == 1 && safe_overlap(extended_overlaps[i][j])) {
         graph_.piles_[i]->set_is_contained();
       } else //if (type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
       //  if (extended_overlaps[i][j].graph_overlap_type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
-      if (extended_overlaps[i][j].graph_overlap_type == 2 && safe_overlap(extended_overlaps[i][j]) && extended_overlaps[i][j].total_overlap_snps > 0) {
+      if (extended_overlaps[i][j].graph_overlap_type == 2 && safe_overlap(extended_overlaps[i][j])) {
         graph_.piles_[extended_overlaps[i][j].overlap.rhs_id]->set_is_contained();
       } 
      else {
@@ -793,23 +1075,6 @@ void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_p
   }
   std::uint16_t n_phases = 5;
 
-  std::vector<std::vector<OverlapType>> overlaps_per_phase(n_phases);
-
-  overlaps_per_phase[0] = {OverlapType::perfect_heterozygous_high_match};
-
-  overlaps_per_phase[1] = {OverlapType::perfect_homozygous,
-                           OverlapType::perfect_heterozygous_low_match,
-  };
-
-  overlaps_per_phase[2] = {OverlapType::high_homozygous,
-                           OverlapType::high_heterozygous_low_match,
-  };
-
-  overlaps_per_phase[3] = {OverlapType::high_heterozygous_high_match};
-
-  overlaps_per_phase[4] = {OverlapType::mid_homozygous,
-                           OverlapType::mid_heterozygous_low_match,
-  };
 
   //exit(0);
   Node::num_objects = 0;
@@ -876,10 +1141,6 @@ void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_p
 
   graph_.PrintOverlaps(overlaps, sequences, true, param.paf_before_parsing_edges_filename);
 
-  auto check_if_overlap_type_in_phase = [&](const extended_overlap &overlap, std::uint8_t phase) -> bool {
-    return std::find(overlaps_per_phase[phase].begin(), overlaps_per_phase[phase].end(), overlap.ol_type) != overlaps_per_phase[phase].end();
-  };
-
   auto return_viable_overlaps = [&](const std::vector<extended_overlap> &overlaps, raven::Graph graph_) -> std::vector<extended_overlap>{
     
   };
@@ -893,7 +1154,7 @@ void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_p
     bool any_edge = false;
 
     for(int j = 0; j < (int)overlaps[it->id()].size(); j++){
-      if(overlap_type(overlaps[it->id()][j].overlap, graph_) > 2 && check_if_overlap_type_in_phase(overlaps[it->id()][j], round)){
+      if(overlap_type(overlaps[it->id()][j].overlap, graph_) > 2, round){
         if(!graph_.piles_[overlaps[it->id()][j].overlap.rhs_id]->is_invalid()){
           continue;
         }
@@ -907,16 +1168,6 @@ void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_p
     }
   };
 
-  auto safe_overlap = [&](const extended_overlap &overlap) -> bool {
-  return (overlap.ol_type == OverlapType::perfect_heterozygous_low_match ||
-          overlap.ol_type == OverlapType::perfect_heterozygous_high_match ||//); // ||
-          overlap.ol_type == OverlapType::perfect_homozygous ||
-          overlap.ol_type == OverlapType::high_heterozygous_low_match ||
-          overlap.ol_type == OverlapType::high_heterozygous_high_match || // ||
-          overlap.ol_type == OverlapType::high_homozygous ||
-          overlap.ol_type == OverlapType::mid_heterozygous_high_match); 
-  // return true;
-  };
 
 
   for (int i = 0; i < (int)overlaps.size(); i++) {
@@ -930,10 +1181,6 @@ void Graph_Constructor::ConstructAssemblyGraphInPhases(std::vector<std::unique_p
       counter++;
       auto tail_seq_id = sequence_to_node[it.overlap.lhs_id];
       auto head_seq_id = sequence_to_node[it.overlap.rhs_id];
-
-      if(!safe_overlap(it)){ 
-        continue;
-      }
 
       if (tail_seq_id == -1 || head_seq_id == -1) {
         continue;
@@ -1259,23 +1506,23 @@ void Graph_Constructor::LoadGTOverlaps(const std::string &overlaps_path,
     std::istringstream iss(line);
     std::string item;
     std::vector<std::string> items;
-    std::uint32_t lhs_seq_id;
-    std::uint32_t rhs_seq_id;
+    // std::uint32_t lhs_seq_id;
+    // std::uint32_t rhs_seq_id;
 
     while (std::getline(iss, item, '\t')) {
       items.push_back(item);
     };
 
     // lhs_seq_id = get_read_id(items[0], sequences);
-    lhs_seq_id = sequence_name_to_seq_id[items[0]];
+    auto lhs_seq_id = sequence_name_to_seq_id.find(items[0]);
     // rhs_seq_id = get_read_id(items[5], sequences);
-    rhs_seq_id = sequence_name_to_seq_id[items[5]];
+    auto rhs_seq_id = sequence_name_to_seq_id.find(items[5]);
 
-    if (lhs_seq_id == (std::uint32_t )-1 || rhs_seq_id == (std::uint32_t )-1) {
+    if (lhs_seq_id == sequence_name_to_seq_id.end() || rhs_seq_id == sequence_name_to_seq_id.end()) {
       continue;
     } else {
-      biosoup::Overlap overlap{ lhs_seq_id, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]),
-                                rhs_seq_id, (std::uint32_t)std::stoi(items[7]), (std::uint32_t)std::stoi(items[8]),
+      biosoup::Overlap overlap{ lhs_seq_id->second, (std::uint32_t)std::stoi(items[2]), (std::uint32_t)std::stoi(items[3]) > sequences[lhs_seq_id->second]->inflated_len ? sequences[lhs_seq_id->second]->inflated_len : (std::uint32_t)std::stoi(items[3]),
+                                rhs_seq_id->second, (std::uint32_t)std::stoi(items[7]), (std::uint32_t)std::stoi(items[8]) > sequences[rhs_seq_id->second]->inflated_len ? sequences[rhs_seq_id->second]->inflated_len : (std::uint32_t)std::stoi(items[8]),
                                 255, items[4] == "+" ? true : false};
       edlib_align tmp;
       if (load_cigar) {
@@ -1292,39 +1539,62 @@ void Graph_Constructor::LoadGTOverlaps(const std::string &overlaps_path,
       extended_overlap total_ovlp{};
       total_ovlp.overlap = overlap;
       total_ovlp.edlib_alignment = tmp;
-      total_ovlp.total_overlap_snps = (std::uint32_t)std::stoi(items[17]);
-      total_ovlp.total_overlap_snp_mismatches = (std::uint32_t)std::stoi(items[18]);
-      total_ovlp.identity = (float)std::stoi(items[19]);
-      total_ovlp.heterozygosity_rate = (float)std::stoi(items[20]);
-      total_ovlp.graph_overlap_type = (std::uint8_t)std::stoi(items[21]);
-      total_ovlp.ol_type = OverlapType::perfect_heterozygous_high_match;
-      total_ovlp.ol_class = items[24] == "same_strand" ? 1 : 0;
-      total_ovlp.ground_truth = (std::uint8_t)std::stoi(items[26]) == 1 ? true : false;
+      total_ovlp.total_overlap_snps = (std::uint32_t)std::stoi(items[11]);
+      total_ovlp.total_overlap_snp_mismatches = (std::uint32_t)std::stoi(items[12]);
+      total_ovlp.identity = (float)std::stoi(items[13]);
+      total_ovlp.heterozygosity_rate = (float)std::stoi(items[14]);
+      total_ovlp.graph_overlap_type = (std::uint8_t)std::stoi(items[15]);
+      //total_ovlp.ol_class = items[24] == "same_strand" ? 1 : 0;
+      total_ovlp.ol_class = 1;
+      total_ovlp.ground_truth = (std::uint8_t)std::stoi(items[16]) == 1 ? true : false;
+
+      // total_ovlp.total_overlap_snps = (std::uint32_t)std::stoi(items[17]);
+      // total_ovlp.total_overlap_snp_mismatches = (std::uint32_t)std::stoi(items[18]);
+      // total_ovlp.identity = (float)std::stoi(items[19]);
+      // total_ovlp.heterozygosity_rate = (float)std::stoi(items[20]);
+      // total_ovlp.graph_overlap_type = (std::uint8_t)std::stoi(items[21]);
+      // total_ovlp.ol_type = OverlapType::perfect_heterozygous_high_match;
+      // total_ovlp.ol_class = items[24] == "same_strand" ? 1 : 0;
+      // total_ovlp.ground_truth = (std::uint8_t)std::stoi(items[33]) == 1 ? true : false;
     // extended_overlap total_ovlp{overlap, tmp, 
     //                             (std::uint32_t)std::stoi(items[19]), (std::uint32_t)std::stoi(items[20]),
     //                             (std::uint32_t)std::stoi(items[21]), (std::uint32_t)std::stoi(items[20]),
     //                             (std::uint32_t)std::stoi(items[18]), OverlapType::perfect_heterozygous_high_match,
     //                             items[24] == "same_strand" ? 1 : 0};
-      extended_overlaps[lhs_seq_id].emplace_back(total_ovlp);
+      extended_overlaps[lhs_seq_id->second].emplace_back(total_ovlp);
     }
   }
   std::cerr << "[raven::Graph::LoadHerroSNPs] loaded overlaps from: " << overlaps_path << std::endl;
+  graph_.PrintOverlaps(extended_overlaps, sequences, false, "gt.paf");
+  std::ofstream piles_tmp("piles_2.txt");
+  for (const auto &it : graph_.piles_) {
+    piles_tmp << it->id() << "\t" 
+              << sequences[it->id()]->name << "\t"
+              << it->get_data().size() << "\t"
+              << it->length() << std::endl;
+  }
   std::vector<std::future<void>> extended_layers_futures;
   std::uint16_t counter = 0;
   for (const auto &it : graph_.piles_) {
-    counter += 1;
-    //std::cerr << counter << std::endl;
-    if (extended_overlaps[it->id()].empty()) {
-      continue;
-    }
-    extended_layers_futures.emplace_back(thread_pool_->Submit(
-      [&]() -> void {
-        it->AddExtendedLayers(
-          extended_overlaps[it->id()].begin(),
-          extended_overlaps[it->id()].end());
+      counter += 1;
+      auto id = it->id();
 
-      }));
+      if (id >= extended_overlaps.size() || extended_overlaps[id].empty()) {
+          continue;
+      }
+
+      auto overlaps_copy = extended_overlaps[id];
+      auto pile_data = it->get_data();  // copy of the pointer (deep copy)
+
+      extended_layers_futures.emplace_back(thread_pool_->Submit(
+          [&it, overlaps_copy]() -> void {
+              it->AddExtendedLayers(
+                  overlaps_copy.begin(),
+                  overlaps_copy.end());
+          }));
+      // //auto data = it->get_data();
   }
+
 
   for (const auto &it : extended_layers_futures) {
     it.wait();

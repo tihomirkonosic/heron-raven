@@ -1,5 +1,6 @@
     #include <cstdint>
     #include "extended_overlap.h"
+    #include <vector>
     
     
     struct edlib_align {
@@ -17,7 +18,7 @@
       float identity;
       float heterozygosity_rate;
       std::uint32_t graph_overlap_type;
-      OverlapType ol_type = OverlapType::undefined;
       std::uint8_t ol_class;
       bool ground_truth = NULL;
+      std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions; // odd entries are start positions, even entries are end positions
     };

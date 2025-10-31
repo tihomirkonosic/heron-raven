@@ -18,13 +18,16 @@ namespace raven {
   Pile::Pile(std::uint32_t id, std::uint32_t len)
       : id_(id),
         begin_(0),
-        end_(len >> kPSS),
+        end_(len),
         median_(0),
         is_invalid_(0),
         is_contained_(0),
         is_chimeric_(0),
         is_repetitive_(0),
+        is_hor_(0),
         data_(end_, 0),
+        sketch_data_(),
+        k_mer_ids_(),
         kmers_(),
         chimeric_regions_(),
         repetitive_regions_() {}
@@ -61,6 +64,34 @@ namespace raven {
     }
   }
 
+  void Pile::set_sketch(std::vector<std::uint16_t> sketch) {
+    if (sketch.empty()) {
+      return;
+    }
+    sketch_data_ = sketch;
+
+  }
+
+  void Pile::set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids) {
+    if (k_mer_ids.empty()) {
+      return;
+    }
+    k_mer_ids_ = k_mer_ids;
+
+  }
+
+  void Pile::check_HOR(std::uint32_t hom_peak) {
+    if(sketch_data_.empty()) {
+      return;
+    }
+    const auto cnt = std::count_if(sketch_data_.begin(), sketch_data_.end(), [hom_peak](std::uint16_t v) {
+      return v >= hom_peak * 1.5;
+    });
+    if(cnt > sketch_data_.size() * 0.7) {
+      set_is_hor();
+    }
+  }
+
   void Pile::AddExtendedLayers(
       std::vector<extended_overlap>::const_iterator begin,
       std::vector<extended_overlap>::const_iterator end) {
@@ -69,6 +100,12 @@ namespace raven {
     }
 
     std::vector<std::uint32_t> boundaries;
+    std::uint32_t lhs_id_tmp;
+    std::uint32_t rhs_id_tmp;
+
+    if(id_ == 27 || id_ == 13){
+      std::cout << "[raven::Pile::AddExtendedLayers] id: " << id_ << std::endl;
+    }
     for (auto it = begin; it != end; ++it) {
       if(it->overlap.lhs_id == id_) {
         // boundaries.emplace_back(((it->overlap.lhs_begin >> kPSS) + 1) << 1);
@@ -81,19 +118,27 @@ namespace raven {
         boundaries.emplace_back(((it->overlap.rhs_begin >> kPSS)) << 1);
         boundaries.emplace_back(((it->overlap.rhs_end >> kPSS)) << 1 | 1);
       }
+      lhs_id_tmp = it->overlap.lhs_id;
+      rhs_id_tmp = it->overlap.rhs_id;
     }
     std::sort(boundaries.begin(), boundaries.end());
-
+    auto pile_id_debug = id_;
     std::uint32_t coverage = 0;
     std::uint32_t last_boundary = 0;
-    for (const auto &it: boundaries) {
+    auto data_size = data_.size();
+    for (const auto &it2: boundaries) {
       if (coverage > 0) {
-        for (std::uint32_t i = last_boundary; i < (it >> 1); ++i) {
+        for (std::uint32_t i = last_boundary; i < (it2 >> 1); ++i) {
+          if(data_size <= i){
+            // std::cerr << "[raven::Pile::AddExtendedLayers] data size: " << data_size
+            //           << ", i: " << i << ", id: " << pile_id_debug << std::endl;
+            continue;
+          }
           data_[i] = clamp(data_[i] + coverage);
         }
       }
-      last_boundary = it >> 1;
-      coverage += it & 1 ? -1 : 1;
+      last_boundary = it2 >> 1;
+      coverage += it2 & 1 ? -1 : 1;
     }
   }  
 

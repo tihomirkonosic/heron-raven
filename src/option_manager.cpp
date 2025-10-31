@@ -29,6 +29,7 @@ enum program_opt {
   opt_chain_n,
   opt_match_n,
   opt_gap_size,
+  opt_fraction,
   opt_threads,
 
   opt_max_overlaps,
@@ -68,6 +69,7 @@ static struct option options[] = {
     {"chain_n", required_argument, nullptr, opt_chain_n},
     {"match_n", required_argument, nullptr, opt_match_n},
     {"gap_size", required_argument, nullptr, opt_gap_size},
+    {"fraction", required_argument, nullptr, opt_fraction},
     {"threads", required_argument, nullptr, opt_threads},
 
     {"max-overlaps", required_argument, nullptr, opt_max_overlaps},
@@ -154,6 +156,9 @@ void Help() {
             "    -G, --gap_size <int>\n"
             "      default: 10000\n"
             "      gap_size\n"
+            "    --fraction <double>\n"
+            "      default: 0.2\n"
+            "      fraction of sequences to use for kmer counting\n"
             "    -t, --threads <int>\n"
             "      default: 1\n"
             "      number of threads\n"
@@ -300,6 +305,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
       case opt_gap_size:
       case 'G':
         param.gap_size = std::atoi(optarg);
+        break;
+      case opt_fraction:
+        param.freq = std::atof(optarg);
         break;
       case opt_threads:
       case 't':
