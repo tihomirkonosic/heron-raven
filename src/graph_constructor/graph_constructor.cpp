@@ -34,6 +34,26 @@ start_group(const biosoup::Overlap& ov) {
     return ro;
 }
 
+std::vector<biosoup::Overlap> remove_duplicates(const std::vector<biosoup::Overlap>& ovlps){
+    std::vector<biosoup::Overlap> result;
+    result.reserve(ovlps.size());
+
+    for (const auto& ov : ovlps) {
+        bool is_duplicate = false;
+        for (const auto& res_ov : result) {
+            if (ov.lhs_id == res_ov.lhs_id &&
+                ov.rhs_id == res_ov.rhs_id) {
+                is_duplicate = true;
+                break;
+            }
+        }
+        if (!is_duplicate) {
+            result.push_back(ov);
+        }
+    }
+    return result;
+}
+
 std::vector<ram_overlap>
 merge_fragments(const std::vector<biosoup::Overlap>& ovlps)
 {
@@ -352,7 +372,8 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     graph_.piles_[i]->set_sketch(sketch);
 
     graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
-    // here should come the code that translates the sketch into calls 
+    // here should come the code that translates the sketch into calls
+    graph_.piles_[i]->classify_sketch_kmers(minimizer_engine.hom_peak(), 30U);
   };
 
   auto map_sequences = [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
@@ -363,92 +384,50 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     if (!ovlps.empty()) {
       std::vector<extended_overlap> ovlps_final;
       std::vector<extended_overlap> ovlps_tmp;
-      std::vector<ram_overlap> fragmented_ovlps;
-      //resolve multiple mappings between same pair of sequences
-      fragmented_ovlps = merge_fragments(ovlps);
+      std::vector<biosoup::Overlap> no_dups_overlaps;
+        
+      std::sort(ovlps.begin(), ovlps.end(),
+          [&](const biosoup::Overlap &lhs,
+              const biosoup::Overlap &rhs) -> bool {
+            return overlap_length(lhs) > overlap_length(rhs);
+          });
+      no_dups_overlaps = remove_duplicates(ovlps);
 
-      for(auto& fragmented_ovlp : fragmented_ovlps){
-        auto tmp = fragmented_ovlp.resolve();
-        ovlps_tmp.insert(ovlps_tmp.end(), tmp.begin(), tmp.end());
-       // ovlps_tmp.emplace_back(fragmented_ovlp.resolve());
-      }
+      // for(auto &ovlp : no_dups_overlaps){
+      //   extended_overlap total_ovlp{ ovlp, {}, 0, 0 };
+      //   ovlps_tmp.emplace_back(total_ovlp);
+      // }
 
-      for(auto &ovlp: ovlps){
-        extended_overlap e_ovlp{ovlp, {}, 0, 0};
-        ovlps_tmp.emplace_back(e_ovlp);
-      }
-
-      std::sort(ovlps_tmp.begin(), ovlps_tmp.end(),
-                [&](const extended_overlap &lhs,
-                    const extended_overlap &rhs) -> bool {
-                  return overlap_length(lhs.overlap) > overlap_length(rhs.overlap);
-                });
-      return ovlps_tmp;
-      } else {
-      return {};
-    }
-       /*         
-      if(ovlps.size() > minimizer_engine.hom_peak()*1.5){
-        ovlps.resize(minimizer_engine.hom_peak()*1.5);
-      }
+    //   return ovlps_tmp;
+    //   } else {
+    //   return {};
+    // }
+                
+      // if(ovlps.size() > minimizer_engine.hom_peak()*1.5){
+      //   ovlps.resize(minimizer_engine.hom_peak()*1.5);
+      // }
 
       std::vector<biosoup::Overlap> tmp;
 
-      for (auto &ovlp : ovlps_tmp) {
-        if (overlap_length(ovlp.overlap) > sequences[i]->inflated_len*0.05) {
+      for (auto &ovlp : no_dups_overlaps) {
+          std::uint32_t left_overhang = std::min(ovlp.lhs_begin, ovlp.rhs_begin);
+          std::uint32_t right_overhang = std::min(sequences[i]->inflated_len - ovlp.lhs_end,
+                                          sequences[ovlp.rhs_id]->inflated_len - ovlp.rhs_end);
 
-          auto left_overhang = std::min(ovlp.overlap.lhs_begin, ovlp.overlap.rhs_begin);
-          auto right_overhang = std::min(sequences[i]->inflated_len - ovlp.overlap.lhs_end,
-                                          sequences[ovlp.overlap.rhs_id]->inflated_len - ovlp.overlap.rhs_end);
+          ovlp.lhs_begin = std::max(ovlp.lhs_begin - left_overhang, 0U);
+          ovlp.rhs_begin = std::max(ovlp.rhs_begin - left_overhang, 0U);
+          ovlp.lhs_end = std::min(ovlp.lhs_end + right_overhang, sequences[i]->inflated_len);
+          ovlp.rhs_end = std::min(ovlp.rhs_end + right_overhang, sequences[ovlp.rhs_id]->inflated_len);
 
-          if(left_overhang < (param.window_len + param.kmer_len - 1)){
-            ovlp.overlap.lhs_begin = 0;
-            ovlp.overlap.rhs_begin = 0;
-          } else if (right_overhang < (param.window_len + param.kmer_len - 1)) {
-            ovlp.overlap.lhs_end = sequences[i]->inflated_len;
-            ovlp.overlap.rhs_end = sequences[ovlp.overlap.rhs_id]->inflated_len;
-          };
-
-          ovlp.overlap.lhs_begin = ovlp.overlap.lhs_begin - (param.window_len + param.kmer_len - 1) ? ovlp.overlap.lhs_begin
-            - (param.window_len + param.kmer_len - 1) : 0;
-          ovlp.overlap.lhs_end =
-            ovlp.overlap.lhs_end + (param.window_len + param.kmer_len - 1) < sequences[ovlp.overlap.lhs_id]->inflated_len ?
-            ovlp.overlap.lhs_end + (param.window_len + param.kmer_len - 1) : sequences[ovlp.overlap.lhs_id]->inflated_len;
-
-          ovlp.overlap.rhs_begin = ovlp.overlap.rhs_begin - (param.window_len + param.kmer_len - 1) ? ovlp.overlap.rhs_begin
-            - (param.window_len + param.kmer_len - 1) : 0;
-          ovlp.overlap.rhs_end =
-            ovlp.overlap.rhs_end + (param.window_len + param.kmer_len - 1) < sequences[ovlp.overlap.rhs_id]->inflated_len ?
-            ovlp.overlap.rhs_end + (param.window_len + param.kmer_len - 1) : sequences[ovlp.overlap.rhs_id]->inflated_len;
-
-          auto lhs = sequences[i]->InflateData(ovlp.overlap.lhs_begin, ovlp.overlap.lhs_end - ovlp.overlap.lhs_begin);
-
-          biosoup::NucleicAcid rhs_{ "",
-                                     sequences[ovlp.overlap.rhs_id]->InflateData(ovlp.overlap.rhs_begin,
-                                                                         ovlp.overlap.rhs_end - ovlp.overlap.rhs_begin) };
-
-          if (!ovlp.overlap.strand) rhs_.ReverseAndComplement();
-
-          auto rhs = rhs_.InflateData();
-
-          edlib_align tmp = edlib_wrapper(lhs, rhs);
-          if (static_cast<float>(tmp.matches) / tmp.block_length > 0.9) {
-            // edlib_align tmp;
-            biosoup::Overlap ovlp_tmp{ ovlp.overlap.lhs_id, ovlp.overlap.lhs_begin, ovlp.overlap.lhs_end,
-                                       ovlp.overlap.rhs_id, ovlp.overlap.rhs_begin, ovlp.overlap.rhs_end,
-                                       ovlp.overlap.score, ovlp.overlap.strand };
-
-            extended_overlap total_ovlp{ ovlp_tmp, tmp, 0, 0 };
-            ovlps_final.emplace_back(total_ovlp);
-          }
-        }
+          extended_overlap total_ovlp{ ovlp, {}, 0, 0 };
+          ovlps_final.emplace_back(total_ovlp);
 
       }
       return ovlps_final;
     }
 
-    // std::vector<extended_overlap> total_ovlps;
-    // return total_ovlps;*/
+    std::vector<extended_overlap> total_ovlps{};
+    return total_ovlps;
   };
 
   minimizer_engine.Count(sequences.begin(),

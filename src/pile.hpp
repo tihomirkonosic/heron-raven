@@ -19,7 +19,7 @@
 namespace raven {
 
   constexpr std::uint32_t kPSS = 4;  // shrink 2 ^ kPSS times
-
+  enum class kMerType : std::uint8_t { Haploid = 0, Diploid = 1, Repetitive = 2, Error = 3 };
   class Pile {
   public:
     Pile(std::uint32_t id, std::uint32_t len);
@@ -139,6 +139,9 @@ namespace raven {
     // store median of valid region
     void FindMedian();
 
+    // classify k-mers in sketch data
+    void classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size);
+
     // store coverage drops
     void FindChimericRegions();
 
@@ -208,6 +211,7 @@ namespace raven {
     std::vector<std::uint16_t> sketch_data_;
     std::vector<std::uint64_t> k_mer_ids_;
     std::vector<bool> kmers_;
+    std::vector<kMerType> kmer_types_;
     std::vector<Region> chimeric_regions_;
     std::vector<Region> repetitive_regions_;
   };

@@ -22,6 +22,8 @@ struct extended_overlap {
   std::uint8_t ol_class;
   bool ground_truth;
   std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions;
+  std::uint32_t found_length;
+  std::uint32_t found_matches;
 };
 
 

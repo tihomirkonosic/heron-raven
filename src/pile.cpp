@@ -15,6 +15,8 @@ namespace raven {
            v : std::numeric_limits<std::uint16_t>::max();
   }
 
+  //enum class kMerType : std::uint8_t { Haploid = 0, Diploid = 1, Repetitive = 2, Error = 3 };
+
   Pile::Pile(std::uint32_t id, std::uint32_t len)
       : id_(id),
         begin_(0),
@@ -90,6 +92,58 @@ namespace raven {
     if(cnt > sketch_data_.size() * 0.7) {
       set_is_hor();
     }
+  }
+
+  void Pile::classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size) {
+    if(sketch_data_.empty() || k_mer_ids_.empty()) {
+      return;
+    }
+
+    auto window_median_without_repetitve = [&](std::vector<std::uint16_t>::const_iterator begin,
+                                         std::vector<std::uint16_t>::const_iterator end) -> std::uint16_t {
+      std::vector<std::uint16_t> window(begin, end);
+      window.erase(
+          std::remove_if(
+              window.begin(),
+              window.end(),
+              [hom_peak](std::uint16_t v) { return v > hom_peak * 1.5; }
+          ),
+          window.end()
+      );
+      std::nth_element(window.begin(), window.begin() + window.size() / 2, window.end());
+      if (window.empty()) {
+        return 0;
+      } else {
+        return window[window.size() / 2];
+      }
+    };
+
+    auto classify_point = [&](std::uint16_t value, std::uint16_t median) -> kMerType {
+      if (value) {
+        if (median * 0.3 < value && value < median * 0.75) {
+          return kMerType::Haploid;
+        } else if (value <= 0.3 * median || value < 0.2 * hom_peak) {
+          return kMerType::Error;
+        } else if (value > hom_peak * 1.5) {
+          return kMerType::Repetitive;
+        } else {
+          return kMerType::Diploid;
+        }
+      } else {
+        return kMerType::Error;
+      }
+    };
+
+    for(std::uint32_t i = 0; i + window_size <= sketch_data_.size(); i += window_size){
+      std::uint16_t median = window_median_without_repetitve(sketch_data_.begin() + i,
+                                                                sketch_data_.begin() + i + window_size);
+      // classify k-mers based on median
+      for(std::uint32_t j = 0; j < window_size; j++){
+        kmer_types_.emplace_back(classify_point(sketch_data_[i + j], median));
+      }
+    }
+
+    
   }
 
   void Pile::AddExtendedLayers(
