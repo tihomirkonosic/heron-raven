@@ -119,10 +119,13 @@ namespace raven {
     };
 
     auto classify_point = [&](std::uint16_t value, std::uint16_t median) -> kMerType {
+      if (median == 0){
+        return kMerType::Repetitive;
+      }
       if (value) {
         if (median * 0.3 < value && value < median * 0.75) {
           return kMerType::Haploid;
-        } else if (value <= 0.3 * median || value < 0.2 * hom_peak) {
+        } else if (value <= 0.3 * median || value < 0.1 * hom_peak) {
           return kMerType::Error;
         } else if (value > hom_peak * 1.5) {
           return kMerType::Repetitive;
@@ -130,22 +133,55 @@ namespace raven {
           return kMerType::Diploid;
         }
       } else {
-        return kMerType::Error;
+        return kMerType::Diploid;
       }
     };
 
-    for(std::uint32_t i = 0; i + window_size <= sketch_data_.size(); i += window_size){
-      std::uint16_t median = window_median_without_repetitve(sketch_data_.begin() + i,
-                                                                sketch_data_.begin() + i + window_size);
-      // classify k-mers based on median
-      for(std::uint32_t j = 0; j < window_size; j++){
-        kmer_types_.emplace_back(classify_point(sketch_data_[i + j], median));
-      }
-    }
+    const std::size_t n = sketch_data_.size();
+    const std::size_t W = window_size;
 
+    std::size_t begin = 0;
+    for (; begin + W <= n; begin += W) {
+        auto first = sketch_data_.begin() + begin;
+        auto last  = first + W;
+        std::uint16_t median = window_median_without_repetitve(first, last);
+        for (auto it = first; it != last; ++it)
+            kmer_types_.emplace_back(classify_point(*it, median));
+    };
+
+    // final partial window [begin, n)
+    if (begin < n) {
+        auto first = sketch_data_.begin() + begin;
+        auto last  = sketch_data_.begin() + n;
+        std::uint16_t median = window_median_without_repetitve(first, last);
+        for (auto it = first; it != last; ++it)
+            kmer_types_.emplace_back(classify_point(*it, median));
+    };
     
   }
 
+  // void Pile::PrintKmerTypes() {
+  //   std::cout 
+  //   for (std::size_t i = 0; i < kmer_types_.size(); ++i) {
+  //     switch (kmer_types_[i]) {
+  //       case kMerType::Haploid:
+  //         std::cout << "H";
+  //         break;
+  //       case kMerType::Diploid:
+  //         std::cout << "D";
+  //         break;
+  //       case kMerType::Repetitive:
+  //         std::cout << "R";
+  //         break;
+  //       case kMerType::Error:
+  //         std::cout << "E";
+  //         break;
+  //     }
+  //     std::cout << std::endl;
+  //   }
+  // }
+
+  
   void Pile::AddExtendedLayers(
       std::vector<extended_overlap>::const_iterator begin,
       std::vector<extended_overlap>::const_iterator end) {

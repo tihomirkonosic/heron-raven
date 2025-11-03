@@ -23,4 +23,17 @@
       std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions; // odd entries are start positions, even entries are end positions
       std::uint32_t found_length = 0;
       std::uint32_t found_matches = 0;
+      std::uint32_t lhs_begin_original;
+      std::uint32_t lhs_end_original;
+      std::uint32_t rhs_begin_original;
+      std::uint32_t rhs_end_original;
+
+      float lhs_hap = 0.0;
+      float rhs_hap = 0.0;
+
+      float lhs_err = 0.0;
+      float rhs_err = 0.0;
+
+      float lhs_rep = 0.0;
+      float rhs_rep = 0.0;
     };

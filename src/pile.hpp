@@ -46,6 +46,69 @@ namespace raven {
       return k_mer_ids_;
     }
 
+    std::vector<kMerType> get_kmer_types() const {
+      return kmer_types_;
+    }
+
+    float return_repetitve(std::uint32_t start, std::uint32_t end){
+      if(kmer_types_.empty() || start >= end || end > kmer_types_.size()){
+        return 0.0;
+    }
+
+      float total = 0.0;
+      for(std::uint32_t i = start; i < end; ++i){
+        if(kmer_types_[i] == kMerType::Repetitive){
+          total += 1.0;
+        }
+      }
+      return total / (end - start);
+    }
+
+    float return_haploid(std::uint32_t start, std::uint32_t end){
+      if(kmer_types_.empty() || start >= end || end > kmer_types_.size()){
+        return 0.0;
+      }
+
+      float total = 0.0;
+      for(std::uint32_t i = start; i < end; ++i){
+        if(kmer_types_[i] == kMerType::Haploid){
+          total += 1.0;
+        }
+      }
+      return total / (end - start);
+    }
+    
+    float return_diploid(std::uint32_t start, std::uint32_t end){
+      if(kmer_types_.empty() || start >= end || end > kmer_types_.size()){
+        return 0.0;
+      }
+
+      float total = 0.0;
+      for(std::uint32_t i = start; i < end; ++i){
+        if(kmer_types_[i] == kMerType::Diploid){
+          total += 1.0;
+        }
+      }
+      return total / (end - start);
+
+    }
+
+    float return_erroneous(std::uint32_t start, std::uint32_t end){
+
+      if(kmer_types_.empty() || start >= end || end > kmer_types_.size()){
+        return 0.0;
+      }
+
+      float total = 0.0;
+      for(std::uint32_t i = start; i < end; ++i){
+        if(kmer_types_[i] == kMerType::Error){
+          total += 1.0;
+        }
+      }
+      return total / (end - start);
+    }
+
+
     void check_HOR(std::uint32_t hom_peak);
 
     std::uint32_t id() const {

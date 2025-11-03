@@ -24,6 +24,19 @@ struct extended_overlap {
   std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions;
   std::uint32_t found_length;
   std::uint32_t found_matches;
+  std::uint32_t lhs_begin_original;
+  std::uint32_t lhs_end_original;
+  std::uint32_t rhs_begin_original;
+  std::uint32_t rhs_end_original;
+
+  float lhs_hap;
+  float rhs_hap;
+
+  float lhs_err;
+  float rhs_err;
+
+  float lhs_rep;
+  float rhs_rep;
 };
 
 
