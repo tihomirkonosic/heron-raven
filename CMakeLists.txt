@@ -25,20 +25,6 @@ if (CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 endif ()
 option(raven_build_tests "Build unit tests" ${raven_main_project})
 
-option(RAVEN_WITH_CATBOOST "Enable CatBoost integration" OFF)
-set(RAVEN_CATBOOST_MODE "auto" CACHE STRING "catboost mode: auto|evaluator|header")
-set_property(CACHE RAVEN_CATBOOST_MODE PROPERTY STRINGS auto evaluator header)
-
-# Helper: find conan in user env (no admin needed)
-function(_raven_find_conan outvar)
-  find_program(_CONAN_EXECUTABLE NAMES conan conan.exe)
-  if(_CONAN_EXECUTABLE)
-    set(${outvar} "${_CONAN_EXECUTABLE}" PARENT_SCOPE)
-  else()
-    set(${outvar} "" PARENT_SCOPE)
-  endif()
-endfunction()
-
 # ---------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------
@@ -110,94 +96,69 @@ if (NOT edlib_FOUND)
 endif ()
 
 # ---------------------------------------------------------
-# CatBoost integration (evaluator or header-only fallback)
+# CatBoost (header-only, ALWAYS ON)
 # ---------------------------------------------------------
 set(RAVEN_CATBOOST_HEADER "${CMAKE_CURRENT_SOURCE_DIR}/third_party/catboost_model/catboost_model.hpp")
-set(RAVEN_CATBOOST_TARGET "")
 
-if (RAVEN_WITH_CATBOOST)
-  set(_USE_EVALUATOR FALSE)
+if (NOT EXISTS "${RAVEN_CATBOOST_HEADER}")
+  message(FATAL_ERROR "CatBoost header '${RAVEN_CATBOOST_HEADER}' not found.\n"
+    "Export from Python first:\n"
+    "  model.save_model('third_party/catboost_model/catboost_model.hpp', format='cpp')")
+endif()
 
-  if (RAVEN_CATBOOST_MODE STREQUAL "evaluator" OR RAVEN_CATBOOST_MODE STREQUAL "auto")
-    _raven_find_conan(_CONAN)
-    if (_CONAN)
-      FetchContent_Declare(
-        catboost_src
-        GIT_REPOSITORY https://github.com/catboost/catboost.git
-        GIT_TAG v1.2.5
-        GIT_SHALLOW TRUE)
-      FetchContent_GetProperties(catboost_src)
-      if (NOT catboost_src_POPULATED)
-        FetchContent_Populate(catboost_src)
-      endif ()
+add_library(catboost_header_only INTERFACE)
+target_include_directories(catboost_header_only INTERFACE
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/catboost_model)
+target_compile_definitions(catboost_header_only INTERFACE RAVEN_CATBOOST_HEADER=1)
+add_library(catboost::model ALIAS catboost_header_only)
 
-      set(CATBOOST_BUILD_DIR   ${CMAKE_BINARY_DIR}/_dep_catboost/build)
-      set(CATBOOST_INSTALL_DIR ${CMAKE_BINARY_DIR}/_dep_catboost/install)
+# ---------------------------------------------------------
+# KMC integration (fast k-mer counter, k > 31) — ALWAYS ON
+# ---------------------------------------------------------
+FetchContent_Declare(
+  KMC
+  GIT_REPOSITORY https://github.com/refresh-bio/KMC.git
+  GIT_TAG v3.2.2
+  GIT_SHALLOW TRUE
+)
+FetchContent_GetProperties(KMC)
+if (NOT KMC_POPULATED)
+  FetchContent_Populate(KMC)
+endif()
 
-      ExternalProject_Add(catboost_build
-        SOURCE_DIR  ${catboost_src_SOURCE_DIR}
-        BINARY_DIR  ${CATBOOST_BUILD_DIR}
-        INSTALL_DIR ${CATBOOST_INSTALL_DIR}
-        CMAKE_ARGS
-          -DCMAKE_BUILD_TYPE=$<IF:$<CONFIG:>,Release,$<CONFIG>>
-          -DCMAKE_CXX_STANDARD=17
-          -DCMAKE_INSTALL_PREFIX=${CATBOOST_INSTALL_DIR}
-          -DBUILD_JAVA=OFF -DBUILD_PYTHON=OFF -DBUILD_R=OFF
-          -DUSE_CONAN=ON
-          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-        BUILD_BYPRODUCTS
-          ${CATBOOST_BUILD_DIR}/lib/libcatboostmodel.a
-      )
+# Note: older CMake exposes lowercase variables for FetchContent:
+#  kmc_SOURCE_DIR / kmc_BINARY_DIR
+if (NOT EXISTS "${kmc_SOURCE_DIR}/kmc_api")
+  message(FATAL_ERROR
+    "KMC API sources not found in '${kmc_SOURCE_DIR}/kmc_api'. "
+    "Resolved kmc_SOURCE_DIR='${kmc_SOURCE_DIR}'. "
+    "Check that the KMC repository was fetched correctly.")
+endif()
 
-      add_library(catboostmodel STATIC IMPORTED GLOBAL)
-      add_dependencies(catboostmodel catboost_build)
+# Build KMC (kmc, kmc_tools) via its Makefile
+find_program(MAKE_EXECUTABLE NAMES make gmake REQUIRED)
+add_custom_target(kmc_build
+  COMMAND ${MAKE_EXECUTABLE} -C ${kmc_SOURCE_DIR}
+  WORKING_DIRECTORY ${kmc_SOURCE_DIR}
+  COMMENT "Building KMC (kmc, kmc_tools) via Makefile"
+  VERBATIM)
 
-      if (APPLE)
-        set(_CATBOOST_LIB ${CATBOOST_BUILD_DIR}/lib/libcatboostmodel.a)
-      elseif (WIN32)
-        set(_CATBOOST_LIB ${CATBOOST_BUILD_DIR}/lib/catboostmodel.lib)
-      else ()
-        set(_CATBOOST_LIB ${CATBOOST_BUILD_DIR}/lib/libcatboostmodel.a)
-      endif ()
+# Build KMC C++ API as a static library
+file(GLOB KMC_API_SRC "${kmc_SOURCE_DIR}/kmc_api/*.cpp")
+add_library(kmc_api STATIC ${KMC_API_SRC})
+add_dependencies(kmc_api kmc_build)
+target_include_directories(kmc_api PUBLIC "${kmc_SOURCE_DIR}/kmc_api")
 
-      set_target_properties(catboostmodel PROPERTIES
-        IMPORTED_LOCATION ${_CATBOOST_LIB}
-        INTERFACE_INCLUDE_DIRECTORIES
-          "${catboost_src_SOURCE_DIR};${catboost_src_SOURCE_DIR}/catboost"
-      )
+# Link zlib + pthread
+find_package(ZLIB REQUIRED)
+if (UNIX)
+  target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB pthread)
+else()
+  target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB)
+endif()
 
-      if (UNIX AND NOT APPLE)
-        target_link_libraries(catboostmodel INTERFACE pthread dl)
-      endif ()
-
-      target_compile_definitions(catboostmodel INTERFACE RAVEN_CATBOOST_EVALUATOR=1)
-      add_library(catboost::model ALIAS catboostmodel)
-
-      set(RAVEN_CATBOOST_TARGET catboostmodel)
-      set(_USE_EVALUATOR TRUE)
-      message(STATUS "CatBoost evaluator enabled (Conan found).")
-    else()
-      message(WARNING "Conan not found; falling back to CatBoost header-only mode.")
-    endif()
-  endif()
-
-  if (RAVEN_CATBOOST_MODE STREQUAL "header" OR NOT _USE_EVALUATOR)
-    if (NOT EXISTS "${RAVEN_CATBOOST_HEADER}")
-      message(FATAL_ERROR "CatBoost header '${RAVEN_CATBOOST_HEADER}' not found.
-Export from Python:  model.save_model('third_party/catboost_model/catboost_model.hpp', format='cpp')")
-    endif()
-
-    add_library(catboost_header_only INTERFACE)
-    target_include_directories(catboost_header_only INTERFACE
-      ${CMAKE_CURRENT_SOURCE_DIR}/third_party/catboost_model)
-    target_compile_definitions(catboost_header_only INTERFACE RAVEN_CATBOOST_HEADER=1)
-    add_library(catboost::model ALIAS catboost_header_only)
-
-    set(RAVEN_CATBOOST_TARGET catboost_header_only)
-    message(STATUS "CatBoost header-only mode active.")
-  endif()
-endif ()
+# Expose path to KMC binaries for runtime helpers
+target_compile_definitions(kmc_api PUBLIC KMC_BIN_DIR="${kmc_SOURCE_DIR}/bin")
 
 # ---------------------------------------------------------
 # Your targets
@@ -217,19 +178,15 @@ add_library(raven
   #src/read_preprocessing.cpp
 )
 
-# Use KEYWORD signature everywhere for this target
 target_link_libraries(raven PUBLIC
   cereal::cereal
   biosoup::biosoup
   bioparser::bioparser
   ram::ram
   edlib::edlib
+  kmc_api
+  catboost::model
 )
-
-# Link CatBoost only if enabled
-if (RAVEN_WITH_CATBOOST AND RAVEN_CATBOOST_TARGET)
-  target_link_libraries(raven PUBLIC catboost::model)
-endif ()
 
 target_include_directories(raven PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
@@ -238,8 +195,7 @@ add_executable(raven_exe
   src/main.cpp
 )
 
-target_link_libraries(raven_exe
-  raven)
+target_link_libraries(raven_exe PUBLIC raven)
 
 target_compile_definitions(raven PUBLIC RAVEN_VERSION="${PROJECT_VERSION}")
 set_property(TARGET raven_exe PROPERTY OUTPUT_NAME raven)
@@ -266,7 +222,7 @@ if (raven_build_tests)
 
   enable_testing()
   add_executable(raven_test test/raven_test.cpp)
-  target_link_libraries(raven_test raven bioparser::bioparser GTest::Main)
+  target_link_libraries(raven_test PUBLIC raven bioparser::bioparser GTest::Main)
   target_compile_definitions(raven_test PRIVATE TEST_DATA="${PROJECT_SOURCE_DIR}/test/data/")
   gtest_add_tests(TARGET raven_test SOURCES test/raven_test.cpp)
 endif ()
