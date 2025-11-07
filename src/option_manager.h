@@ -16,7 +16,7 @@ struct Program_Parameters {
   std::uint16_t chain_n = 8;
   std::uint16_t match_n = 250;
   std::uint16_t gap_size = 200;
-  double fraction = 0.2; // fraction of sequences to use for kmer counting
+  double fraction = 1; // fraction of sequences to use for kmer counting
   double freq = 0.0001;
   bool hpc = false;
 

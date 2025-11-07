@@ -7,6 +7,8 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+#include <iomanip>
+#include <limits>
 
 #include "cereal/archives/binary.hpp"
 #include "cereal/archives/json.hpp"
@@ -689,14 +691,11 @@ namespace raven {
     }
     
     std::ofstream os(path);
+    os << std::defaultfloat
+    << std::setprecision(std::numeric_limits<double>::max_digits10);
 
     for (const auto &it: overlaps) {
       for (const auto &jt: it) {
-      if(sequences[jt.overlap.lhs_id]->name == "b40f866c-5861-f151-3ffd-b1ce073de8b4;chr19_PATERNAL;+strand;41644245-41700259;length=55614;error-free_length=56014;read_identity=97.085%"){
-        std::cout << "found";
-      } else if (sequences[jt.overlap.rhs_id]->name == "b40f866c-5861-f151-3ffd-b1ce073de8b4;chr19_MATERNAL;-strand;41644245-41700259;length=55614;error-free_length=56014;read_identity=97.085%"){
-        std::cout << "found";
-      }
         os << sequences[jt.overlap.lhs_id]->name
            << "\t" << sequences[jt.overlap.lhs_id]->inflated_len  // length
            << "\t" << jt.overlap.lhs_begin
@@ -709,18 +708,18 @@ namespace raven {
            << "\t" << jt.edlib_alignment.matches // residue matches
            << "\t" << jt.edlib_alignment.block_length // alignment block length
            << "\t" << jt.overlap.score
-           << "\t" << "tp:A:P"
-           << "\t" << "mm:i:0"
-           << "\t" << "gn:i:0"
-           << "\t" << "go:i:0"
-           << "\t" << "cg:Z:" << (print_cigar ? jt.edlib_alignment.cigar : "0")
-           << "\t" << "snp:" << jt.total_overlap_snps
-           << "\t" << "snpmm:" << jt.total_overlap_snp_mismatches
-           << "\t" << "identity:" << jt.identity
-           << "\t" << "heterozygosity:" << jt.heterozygosity_rate
-           << "\t" << "gtype:" << jt.graph_overlap_type
-           << "\t" << "ed:" << jt.edlib_alignment.edit_distance
-           << "\t" << "gt:" << (jt.ground_truth ? 1 : 0)
+           << "\t" << jt.lhs_begin_original
+           << "\t" << jt.lhs_end_original
+           << "\t" << jt.rhs_begin_original
+           << "\t" << jt.rhs_end_original
+           << "\t" << jt.lhs_hap
+           << "\t" << jt.rhs_hap
+           << "\t" << jt.lhs_err
+           << "\t" << jt.rhs_err
+           << "\t" << jt.lhs_rep
+           << "\t" << jt.rhs_rep
+           << "\t" << (piles_[jt.overlap.lhs_id]->is_hor() ? "1" : "0")
+           << "\t" << (piles_[jt.overlap.rhs_id]->is_hor() ? "1" : "0")
            << std::endl;
       }
     }

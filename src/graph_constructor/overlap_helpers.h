@@ -108,6 +108,29 @@ inline extended_overlap cigar_extended_overlap_reverse(const extended_overlap &e
   };
 }
 
+inline extended_overlap feature_overlap_reverse(const extended_overlap &eo) {
+  extended_overlap res;
+  res.overlap.lhs_id = eo.overlap.rhs_id;
+  res.overlap.lhs_begin = eo.overlap.rhs_begin;
+  res.overlap.lhs_end = eo.overlap.rhs_end;
+  res.overlap.rhs_id = eo.overlap.lhs_id;
+  res.overlap.rhs_begin = eo.overlap.lhs_begin;
+  res.overlap.rhs_end = eo.overlap.lhs_end;
+  res.overlap.score = eo.overlap.score;
+  res.overlap.strand = eo.overlap.strand;
+  res.lhs_begin_original = eo.rhs_begin_original;
+  res.lhs_end_original = eo.rhs_end_original;
+  res.rhs_begin_original = eo.lhs_begin_original;
+  res.rhs_end_original = eo.lhs_end_original;
+  res.lhs_hap = eo.rhs_hap;
+  res.rhs_hap = eo.lhs_hap;
+  res.lhs_err = eo.rhs_err;
+  res.rhs_err = eo.lhs_err;
+  res.lhs_rep = eo.rhs_rep;
+  res.rhs_rep = eo.lhs_rep;
+  return res;
+}
+
 inline std::uint32_t overlap_length(const biosoup::Overlap &o)  {
   return std::max(o.rhs_end - o.rhs_begin, o.lhs_end - o.lhs_begin);
 }

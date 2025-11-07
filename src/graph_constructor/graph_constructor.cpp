@@ -177,7 +177,7 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     MapSequencesFast(sequences, extended_overlaps, timer, param);
     //MapSequences(sequences, extended_overlaps, timer, param);
   }
-/*
+
   std::ofstream outdata;
   outdata.open("minimizer_piles_multi.csv");
   std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
@@ -192,16 +192,17 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     for (int i = 0; i < (int)kmer_data.size(); i++) {
       outdata << kmer_data[i] << ",";;
     }
-    outdata << "\t";
-    auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-    for (int i = 0; i < (int)kmer_ids.size();i++) {
-        outdata << kmer_ids[i] << ",";;
-      }
+    // outdata << "\t";
+    // auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+    // for (int i = 0; i < (int)kmer_ids.size();i++) {
+    //     outdata << kmer_ids[i] << ",";;
+    //   }
     outdata << std::endl;
 
   };
 
   outdata.close();
+/*
   // outdata.open("minimizer_piles_multi_ids.csv");
   // std::cout << "Writing pile data to minimizer_piles_multi_ids.csv" << std::endl;
   // for (int i = 0; i < (int)graph_.piles_.size(); i++) {
@@ -373,7 +374,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
 
     graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
     // here should come the code that translates the sketch into calls
-    graph_.piles_[i]->classify_sketch_kmers(minimizer_engine.hom_peak(), 30U);
+    graph_.piles_[i]->classify_sketch_kmers(minimizer_engine.hom_peak(), 64U, param.kmer_len, param.fraction);
   };
 
   auto map_sequences = [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
@@ -410,9 +411,19 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
       std::vector<biosoup::Overlap> tmp;
 
       for (auto &ovlp : no_dups_overlaps) {
-          std::uint32_t left_overhang = std::min(ovlp.lhs_begin, ovlp.rhs_begin);
-          std::uint32_t right_overhang = std::min(sequences[i]->inflated_len - ovlp.lhs_end,
-                                          sequences[ovlp.rhs_id]->inflated_len - ovlp.rhs_end);
+
+          std::uint32_t left_overhang = 0;
+          std::uint32_t right_overhang = 0;
+          //if(ovlp.strand == true){
+            left_overhang = std::min(ovlp.lhs_begin, ovlp.rhs_begin);
+            right_overhang = std::min(sequences[i]->inflated_len - ovlp.lhs_end,
+                                            sequences[ovlp.rhs_id]->inflated_len - ovlp.rhs_end);
+          // } else {
+          //   left_overhang = std::min(ovlp.lhs_begin, 
+          //                             sequences[ovlp.rhs_id]->inflated_len - ovlp.rhs_end);
+          //   right_overhang = std::min(sequences[i]->inflated_len - ovlp.lhs_end,
+          //                                    ovlp.rhs_begin);
+          // }
 
           std::uint32_t lhs_begin_original = ovlp.lhs_begin;
           std::uint32_t lhs_end_original = ovlp.lhs_end;
@@ -429,29 +440,32 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
           total_ovlp.lhs_end_original = lhs_end_original;
           total_ovlp.rhs_begin_original = rhs_begin_original;
           total_ovlp.rhs_end_original = rhs_end_original;
+          total_ovlp.found_length = std::max(lhs_end_original - lhs_begin_original,
+                                            rhs_end_original - rhs_begin_original);
+          total_ovlp.found_matches = ovlp.score;
           
           total_ovlp.lhs_hap = graph_.piles_[total_ovlp.overlap.lhs_id]->return_haploid(
-            total_ovlp.overlap.lhs_begin,
+            total_ovlp.overlap.lhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.lhs_end);
 
           total_ovlp.rhs_hap = graph_.piles_[total_ovlp.overlap.rhs_id]->return_haploid(
-            total_ovlp.overlap.rhs_begin,
+            total_ovlp.overlap.rhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.rhs_end);
 
           total_ovlp.lhs_err = graph_.piles_[total_ovlp.overlap.lhs_id]->return_erroneous(
-            total_ovlp.overlap.lhs_begin,
+            total_ovlp.overlap.lhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.lhs_end);
 
           total_ovlp.rhs_err = graph_.piles_[total_ovlp.overlap.rhs_id]->return_erroneous(
-            total_ovlp.overlap.rhs_begin,
+            total_ovlp.overlap.rhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.rhs_end);
 
           total_ovlp.lhs_rep = graph_.piles_[total_ovlp.overlap.lhs_id]->return_repetitve(
-            total_ovlp.overlap.lhs_begin,
+            total_ovlp.overlap.lhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.lhs_end);
 
           total_ovlp.rhs_rep = graph_.piles_[total_ovlp.overlap.rhs_id]->return_repetitve(
-            total_ovlp.overlap.rhs_begin,
+            total_ovlp.overlap.rhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.rhs_end);
 
           ovlps_final.emplace_back(total_ovlp);
@@ -510,12 +524,12 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     std::ofstream sketch_out("sketches.txt");
     for (const auto &it : graph_.piles_) {
       sketch_out << sequences[it->id()]->name << "\t";
-        for(int i = 0; i < param.kmer_len; i++){
-          sketch_out << "N";
-        }
         for(const auto &val : it->get_kmer_types()) {
           switch (val)
           {
+          case kMerType::None:
+            sketch_out << "N";
+            break;
           case kMerType::Haploid:
             sketch_out << "H";
             break;
@@ -535,7 +549,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
       sketch_out << std::endl;
     }
     sketch_out.close();
-    exit(0);
+   // exit(0);
     //std::vector<std::future<void>> thread_futures;
     std::vector<std::future<std::vector<extended_overlap>>> thread_futures;
     // for(auto &it : sequences){
@@ -555,7 +569,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
         for (const auto &jt : it.get()) {
           extended_overlaps[jt.overlap.lhs_id].emplace_back(jt);
           //overlaps.emplace_back(jt.overlap);
-          extended_overlaps[jt.overlap.rhs_id].emplace_back(cigar_extended_overlap_reverse(jt));
+          extended_overlaps[jt.overlap.rhs_id].emplace_back(feature_overlap_reverse(jt));
           //overlaps.emplace_back(overlap_reverse(jt.overlap));
         }
       }

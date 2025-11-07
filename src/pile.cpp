@@ -94,7 +94,7 @@ namespace raven {
     }
   }
 
-  void Pile::classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size) {
+  void Pile::classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size, std::uint32_t kmer_len, double downsample_factor) {
     if(sketch_data_.empty() || k_mer_ids_.empty()) {
       return;
     }
@@ -106,7 +106,7 @@ namespace raven {
           std::remove_if(
               window.begin(),
               window.end(),
-              [hom_peak](std::uint16_t v) { return v > hom_peak * 1.5; }
+              [hom_peak, downsample_factor](std::uint16_t v) { return (v / downsample_factor) > (hom_peak * 1.5); }
           ),
           window.end()
       );
@@ -125,9 +125,9 @@ namespace raven {
       if (value) {
         if (median * 0.3 < value && value < median * 0.75) {
           return kMerType::Haploid;
-        } else if (value <= 0.3 * median || value < 0.1 * hom_peak) {
+        } else if (value <= 0.3 * median || (value / downsample_factor) < 0.1 * hom_peak) {
           return kMerType::Error;
-        } else if (value > hom_peak * 1.5) {
+        } else if ((value / downsample_factor) > hom_peak * 1.5) {
           return kMerType::Repetitive;
         } else {
           return kMerType::Diploid;
@@ -153,11 +153,12 @@ namespace raven {
     if (begin < n) {
         auto first = sketch_data_.begin() + begin;
         auto last  = sketch_data_.begin() + n;
-        std::uint16_t median = window_median_without_repetitve(first, last);
+        auto first_for_median = last - W;
+        std::uint16_t median = window_median_without_repetitve(first_for_median, last);
         for (auto it = first; it != last; ++it)
             kmer_types_.emplace_back(classify_point(*it, median));
     };
-    
+    kmer_types_.insert(kmer_types_.begin(), kmer_len - 1, kMerType::None);
   }
 
   // void Pile::PrintKmerTypes() {
