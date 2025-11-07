@@ -12,11 +12,13 @@
 #include "graph_assembler/graph_assembler.h"
 #include "parser.h"
 
+#include "catboost_model.hpp"
+#include "cmath"
+
 std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};
 
 
 int main(int argc, char **argv) {
-
   Program_Parameters param{};
 
   if (!ProcessParameters(argc, argv, param))
