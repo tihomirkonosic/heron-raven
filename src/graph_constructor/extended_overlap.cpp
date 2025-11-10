@@ -36,4 +36,6 @@
 
       float lhs_rep = 0.0;
       float rhs_rep = 0.0;
+
+      int classification_label = -1;
     };

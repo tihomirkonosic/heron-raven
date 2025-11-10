@@ -12,7 +12,7 @@
 #include "graph_assembler/graph_assembler.h"
 #include "parser.h"
 
-#include "catboost_model.hpp"
+//#include "catboost_model.hpp"
 #include "cmath"
 
 #ifdef KMC_BIN_DIR

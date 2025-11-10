@@ -720,6 +720,7 @@ namespace raven {
            << "\t" << jt.rhs_rep
            << "\t" << (piles_[jt.overlap.lhs_id]->is_hor() ? "1" : "0")
            << "\t" << (piles_[jt.overlap.rhs_id]->is_hor() ? "1" : "0")
+           << "\t" << jt.classification_label
            << std::endl;
       }
     }

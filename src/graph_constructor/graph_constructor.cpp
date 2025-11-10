@@ -14,6 +14,7 @@
 #include "overlap_helpers.h"
 #include "annotation_helpers.h"
 #include "ram_overlap.h"
+#include "catboost_model.hpp"
 
 namespace raven {
 
@@ -178,30 +179,30 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     //MapSequences(sequences, extended_overlaps, timer, param);
   }
 
-  std::ofstream outdata;
-  outdata.open("minimizer_piles_multi.csv");
-  std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
-  for (int i = 0; i < (int)graph_.piles_.size(); i++) {
-    outdata << sequences[i].get()->name << "\t";
-    auto kmer_data = graph_.piles_[i]->get_sketch_data();
-    //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-    if (kmer_data.size() == 0) {
-      continue;
-    }
-   // std::vector<uint16_t> coverages = kmer_data.second;
-    for (int i = 0; i < (int)kmer_data.size(); i++) {
-      outdata << kmer_data[i] << ",";;
-    }
-    // outdata << "\t";
-    // auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-    // for (int i = 0; i < (int)kmer_ids.size();i++) {
-    //     outdata << kmer_ids[i] << ",";;
-    //   }
-    outdata << std::endl;
+  // std::ofstream outdata;
+  // outdata.open("minimizer_piles_multi.csv");
+  // std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
+  // for (int i = 0; i < (int)graph_.piles_.size(); i++) {
+  //   outdata << sequences[i].get()->name << "\t";
+  //   auto kmer_data = graph_.piles_[i]->get_sketch_data();
+  //   //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+  //   if (kmer_data.size() == 0) {
+  //     continue;
+  //   }
+  //  // std::vector<uint16_t> coverages = kmer_data.second;
+  //   for (int i = 0; i < (int)kmer_data.size(); i++) {
+  //     outdata << kmer_data[i] << ",";;
+  //   }
+  //   // outdata << "\t";
+  //   // auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+  //   // for (int i = 0; i < (int)kmer_ids.size();i++) {
+  //   //     outdata << kmer_ids[i] << ",";;
+  //   //   }
+  //   outdata << std::endl;
 
-  };
+  // };
 
-  outdata.close();
+  //outdata.close();
 /*
   // outdata.open("minimizer_piles_multi_ids.csv");
   // std::cout << "Writing pile data to minimizer_piles_multi_ids.csv" << std::endl;
@@ -360,6 +361,16 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     param.gap_size
   };
 
+  //auto sigmoid = [](double x) { return 1.0 / (1.0 + std::exp(-x)); };
+
+  // auto classify_sigmoid = [&sigmoid](const std::vector<double>& logits,
+  //                                                                        double threshold) {
+  //   std::vector<int> cls;
+  //   cls.reserve(logits.size());
+  //   for (double z : logits) cls.push_back(sigmoid(z) >= threshold ? 1 : 0);
+  //   return cls;
+  // };
+
   auto sketch_sequence = [&](std::uint32_t i) -> void {
     auto tmp = minimizer_engine.SketchRead(sequences[i], param.kmer_len);
     //auto tmp_2 = window_min(tmp);
@@ -381,7 +392,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
                                                                false);
 
-
+    
     if (!ovlps.empty()) {
       std::vector<extended_overlap> ovlps_final;
       std::vector<extended_overlap> ovlps_tmp;
@@ -467,6 +478,26 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
           total_ovlp.rhs_rep = graph_.piles_[total_ovlp.overlap.rhs_id]->return_repetitve(
             total_ovlp.overlap.rhs_begin + (param.kmer_len - 1),
             total_ovlp.overlap.rhs_end);
+
+          std::vector<float> model_input {
+            static_cast<float>(total_ovlp.overlap.score),
+            static_cast<float>(total_ovlp.found_length),
+            static_cast<float>(total_ovlp.overlap.score / overlap_length(total_ovlp.overlap)),
+            static_cast<float>(total_ovlp.lhs_hap),
+            static_cast<float>(total_ovlp.rhs_hap),
+            static_cast<float>(total_ovlp.lhs_err),
+            static_cast<float>(total_ovlp.rhs_err),
+            static_cast<float>(total_ovlp.lhs_rep),
+            static_cast<float>(total_ovlp.rhs_rep),
+            static_cast<float>(total_ovlp.lhs_hap / (total_ovlp.rhs_hap + 0.0001f)),
+            static_cast<float>(overlap_length(total_ovlp.overlap) / total_ovlp.found_length),
+            static_cast<float>(graph_.piles_[total_ovlp.overlap.lhs_id]->is_hor()),
+            static_cast<float>(graph_.piles_[total_ovlp.overlap.rhs_id]->is_hor())
+          };
+
+          auto sigmoid = [](double x) { return 1.0 / (1.0 + std::exp(-x)); };
+          double logits = ApplyCatboostModel(model_input);
+          total_ovlp.classification_label = sigmoid(logits) >= 0.5 ? 1 : 0;
 
           ovlps_final.emplace_back(total_ovlp);
 
@@ -576,27 +607,16 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
       thread_futures.clear();
     }
 
-    // std::vector<std::future<void>> void_futures;
-    // for (const auto &it : graph_.piles_) {
-    //   if (extended_overlaps[it->id()].empty()
-    //     || extended_overlaps[it->id()].size() == num_overlaps[it->id()]
-    //     ) {
-    //     continue;
-    //   }
+    // std::vector<std::future<std::vector<extended_overlap>>> classification_futures;
 
-    //   void_futures.emplace_back(thread_pool_->Submit(
-    //     [&](std::uint32_t i) -> void {
-
-    //       graph_.piles_[i]->AddExtendedLayers(
-    //         extended_overlaps[i].begin(),
-    //         extended_overlaps[i].end());
-
-    //     },
-    //     it->id()));
+    // std::vector<float> model_inputs;
+    // model_inputs.reserve(extended_overlaps.size());
+    // for (std::uint32_t k = 0; k < extended_overlaps.size(); ++k) {
+    //   model_inputs.push_back(static_cast<float>(extended_overlaps[k].size() - num_overlaps[k]));
     // }
-    // for (const auto &it : void_futures) {
-    //   it.wait();
-    // }
+
+    // std::vector<int> results = classify_sigmoid(ApplyCatboostModelMulti(model_inputs), 0.5);
+    
 
     std::cerr << "[raven::Graph::Construct] mapped sequences "
               << std::fixed << timer.Stop() << "s"

@@ -37,6 +37,8 @@ struct extended_overlap {
 
   float lhs_rep;
   float rhs_rep;
+
+  int classification_label;
 };
 
 
