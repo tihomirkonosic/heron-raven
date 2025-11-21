@@ -469,9 +469,10 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
           total_ovlp.t_hor = graph_.piles_[total_ovlp.overlap.rhs_id]->is_hor();
 
           std::vector<float> model_input {
-            static_cast<float>(total_ovlp.extended_length),
             static_cast<float>(total_ovlp.overlap.score),
+            static_cast<float>(total_ovlp.extended_length),
             static_cast<float>(total_ovlp.found_length),
+            static_cast<float>(overlap_length(total_ovlp.overlap) / total_ovlp.found_length),
             static_cast<float>(total_ovlp.overlap.score / overlap_length(total_ovlp.overlap)),
             static_cast<float>(total_ovlp.lhs_hap),
             static_cast<float>(total_ovlp.rhs_hap),
@@ -480,7 +481,6 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
             static_cast<float>(total_ovlp.lhs_rep),
             static_cast<float>(total_ovlp.rhs_rep),
             static_cast<float>(total_ovlp.lhs_hap / (total_ovlp.rhs_hap + 0.0001f)),
-            static_cast<float>(overlap_length(total_ovlp.overlap) / total_ovlp.found_length),
             static_cast<float>(total_ovlp.q_hor),
             static_cast<float>(total_ovlp.t_hor)
           };
