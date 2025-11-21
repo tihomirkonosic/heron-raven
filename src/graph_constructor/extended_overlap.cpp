@@ -37,5 +37,12 @@
       float lhs_rep = 0.0;
       float rhs_rep = 0.0;
 
+      float score_to_length = 0.0;
+      float found_to_extended_length = 0.0;
+      float hap_ratio = 0.0;
+
+      bool q_hor = false;
+      bool t_hor = false;
+
       int classification_label = -1;
     };

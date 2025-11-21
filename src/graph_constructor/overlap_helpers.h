@@ -128,6 +128,12 @@ inline extended_overlap feature_overlap_reverse(const extended_overlap &eo) {
   res.rhs_err = eo.lhs_err;
   res.lhs_rep = eo.rhs_rep;
   res.rhs_rep = eo.lhs_rep;
+  res.extended_length = eo.extended_length;
+  res.found_length = eo.found_length;
+  res.found_matches = eo.found_matches;
+  res.score_to_length = eo.score_to_length;
+  res.found_to_extended_length = eo.found_to_extended_length;
+  res.hap_ratio = eo.hap_ratio;
   res.classification_label = eo.classification_label;
   return res;
 }

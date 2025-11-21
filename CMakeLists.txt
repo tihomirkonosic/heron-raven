@@ -112,53 +112,53 @@ target_include_directories(catboost_header_only INTERFACE
 target_compile_definitions(catboost_header_only INTERFACE RAVEN_CATBOOST_HEADER=1)
 add_library(catboost::model ALIAS catboost_header_only)
 
-# ---------------------------------------------------------
-# KMC integration (fast k-mer counter, k > 31) — ALWAYS ON
-# ---------------------------------------------------------
-FetchContent_Declare(
-  KMC
-  GIT_REPOSITORY https://github.com/refresh-bio/KMC.git
-  GIT_TAG v3.2.2
-  GIT_SHALLOW TRUE
-)
-FetchContent_GetProperties(KMC)
-if (NOT KMC_POPULATED)
-  FetchContent_Populate(KMC)
-endif()
+# # ---------------------------------------------------------
+# # KMC integration (fast k-mer counter, k > 31) — ALWAYS ON
+# # ---------------------------------------------------------
+# FetchContent_Declare(
+#   KMC
+#   GIT_REPOSITORY https://github.com/refresh-bio/KMC.git
+#   GIT_TAG v3.2.2
+#   GIT_SHALLOW TRUE
+# )
+# FetchContent_GetProperties(KMC)
+# if (NOT KMC_POPULATED)
+#   FetchContent_Populate(KMC)
+# endif()
 
-# Note: older CMake exposes lowercase variables for FetchContent:
-#  kmc_SOURCE_DIR / kmc_BINARY_DIR
-if (NOT EXISTS "${kmc_SOURCE_DIR}/kmc_api")
-  message(FATAL_ERROR
-    "KMC API sources not found in '${kmc_SOURCE_DIR}/kmc_api'. "
-    "Resolved kmc_SOURCE_DIR='${kmc_SOURCE_DIR}'. "
-    "Check that the KMC repository was fetched correctly.")
-endif()
+# # Note: older CMake exposes lowercase variables for FetchContent:
+# #  kmc_SOURCE_DIR / kmc_BINARY_DIR
+# if (NOT EXISTS "${kmc_SOURCE_DIR}/kmc_api")
+#   message(FATAL_ERROR
+#     "KMC API sources not found in '${kmc_SOURCE_DIR}/kmc_api'. "
+#     "Resolved kmc_SOURCE_DIR='${kmc_SOURCE_DIR}'. "
+#     "Check that the KMC repository was fetched correctly.")
+# endif()
 
-# Build KMC (kmc, kmc_tools) via its Makefile
-find_program(MAKE_EXECUTABLE NAMES make gmake REQUIRED)
-add_custom_target(kmc_build
-  COMMAND ${MAKE_EXECUTABLE} -C ${kmc_SOURCE_DIR}
-  WORKING_DIRECTORY ${kmc_SOURCE_DIR}
-  COMMENT "Building KMC (kmc, kmc_tools) via Makefile"
-  VERBATIM)
+# # Build KMC (kmc, kmc_tools) via its Makefile
+# find_program(MAKE_EXECUTABLE NAMES make gmake REQUIRED)
+# add_custom_target(kmc_build
+#   COMMAND ${MAKE_EXECUTABLE} -C ${kmc_SOURCE_DIR}
+#   WORKING_DIRECTORY ${kmc_SOURCE_DIR}
+#   COMMENT "Building KMC (kmc, kmc_tools) via Makefile"
+#   VERBATIM)
 
-# Build KMC C++ API as a static library
-file(GLOB KMC_API_SRC "${kmc_SOURCE_DIR}/kmc_api/*.cpp")
-add_library(kmc_api STATIC ${KMC_API_SRC})
-add_dependencies(kmc_api kmc_build)
-target_include_directories(kmc_api PUBLIC "${kmc_SOURCE_DIR}/kmc_api")
+# # Build KMC C++ API as a static library
+# file(GLOB KMC_API_SRC "${kmc_SOURCE_DIR}/kmc_api/*.cpp")
+# add_library(kmc_api STATIC ${KMC_API_SRC})
+# add_dependencies(kmc_api kmc_build)
+# target_include_directories(kmc_api PUBLIC "${kmc_SOURCE_DIR}/kmc_api")
 
-# Link zlib + pthread
-find_package(ZLIB REQUIRED)
-if (UNIX)
-  target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB pthread)
-else()
-  target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB)
-endif()
+# # Link zlib + pthread
+# find_package(ZLIB REQUIRED)
+# if (UNIX)
+#   target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB pthread)
+# else()
+#   target_link_libraries(kmc_api PUBLIC ZLIB::ZLIB)
+# endif()
 
-# Expose path to KMC binaries for runtime helpers
-target_compile_definitions(kmc_api PUBLIC KMC_BIN_DIR="${kmc_SOURCE_DIR}/bin")
+# # Expose path to KMC binaries for runtime helpers
+# target_compile_definitions(kmc_api PUBLIC KMC_BIN_DIR="${kmc_SOURCE_DIR}/bin")
 
 # ---------------------------------------------------------
 # Your targets
@@ -184,7 +184,7 @@ target_link_libraries(raven PUBLIC
   bioparser::bioparser
   ram::ram
   edlib::edlib
-  kmc_api
+  #kmc_api
   catboost::model
 )
 

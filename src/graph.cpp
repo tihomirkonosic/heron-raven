@@ -712,14 +712,19 @@ namespace raven {
            << "\t" << jt.lhs_end_original
            << "\t" << jt.rhs_begin_original
            << "\t" << jt.rhs_end_original
+           << "\t" << jt.extended_length
+           << "\t" << jt.found_length
+           << "\t" << jt.found_to_extended_length
+           << "\t" << jt.score_to_length
            << "\t" << jt.lhs_hap
            << "\t" << jt.rhs_hap
            << "\t" << jt.lhs_err
            << "\t" << jt.rhs_err
            << "\t" << jt.lhs_rep
            << "\t" << jt.rhs_rep
-           << "\t" << (piles_[jt.overlap.lhs_id]->is_hor() ? "1" : "0")
-           << "\t" << (piles_[jt.overlap.rhs_id]->is_hor() ? "1" : "0")
+           << "\t" << jt.hap_ratio
+           << "\t" << (jt.q_hor ? "1" : "0")
+           << "\t" << (jt.t_hor ? "1" : "0")
            << "\t" << jt.classification_label
            << std::endl;
       }

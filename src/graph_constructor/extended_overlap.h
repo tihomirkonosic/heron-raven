@@ -22,6 +22,8 @@ struct extended_overlap {
   std::uint8_t ol_class;
   bool ground_truth;
   std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions;
+
+  std::uint32_t extended_length;
   std::uint32_t found_length;
   std::uint32_t found_matches;
   std::uint32_t lhs_begin_original;
@@ -37,6 +39,14 @@ struct extended_overlap {
 
   float lhs_rep;
   float rhs_rep;
+
+  
+  float score_to_length;
+  float found_to_extended_length;
+  float hap_ratio;
+
+  bool q_hor;
+  bool t_hor;
 
   int classification_label;
 };
