@@ -66,7 +66,7 @@ namespace raven {
     }
   }
 
-  void Pile::set_sketch(std::vector<std::uint16_t> sketch) {
+  void Pile::set_sketch(std::vector<float> sketch) {
     if (sketch.empty()) {
       return;
     }
@@ -81,6 +81,13 @@ namespace raven {
     k_mer_ids_ = k_mer_ids;
 
   }
+
+  void Pile::set_quality_data(std::vector<std::uint32_t> quality_data){
+    if (quality_data.empty()){
+      return;
+    }
+    quality_data_ = quality_data;
+  };
 
   void Pile::check_HOR(std::uint32_t hom_peak) {
     if(sketch_data_.empty()) {
@@ -99,14 +106,14 @@ namespace raven {
       return;
     }
 
-    auto window_median_without_repetitve = [&](std::vector<std::uint16_t>::const_iterator begin,
-                                         std::vector<std::uint16_t>::const_iterator end) -> std::uint16_t {
-      std::vector<std::uint16_t> window(begin, end);
+    auto window_median_without_repetitve = [&](std::vector<float>::const_iterator begin,
+                                         std::vector<float>::const_iterator end) -> float {
+      std::vector<float> window(begin, end);
       window.erase(
           std::remove_if(
               window.begin(),
               window.end(),
-              [hom_peak, downsample_factor](std::uint16_t v) { return (v / downsample_factor) > (hom_peak * 1.5); }
+              [hom_peak, downsample_factor](float v) { return (v / downsample_factor) > (hom_peak * 1.5); }
           ),
           window.end()
       );
@@ -118,7 +125,7 @@ namespace raven {
       }
     };
 
-    auto classify_point = [&](std::uint16_t value, std::uint16_t median) -> kMerType {
+    auto classify_point = [&](float value, std::uint16_t median) -> kMerType {
       if (median == 0){
         return kMerType::Repetitive;
       }

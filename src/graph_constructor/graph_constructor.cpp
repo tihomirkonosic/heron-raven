@@ -15,6 +15,11 @@
 #include "annotation_helpers.h"
 #include "ram_overlap.h"
 #include "catboost_model.hpp"
+#include <ATen/Parallel.h>
+#include <torch/script.h>
+#include <atomic>
+#include <mutex>
+#include <iostream>
 
 namespace raven {
 
@@ -162,7 +167,7 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
                                        Program_Parameters &param) {
 
   graph_.annotations_.resize(sequences.size());
-
+                                      
   for (const auto &it : sequences) {
     graph_.piles_.emplace_back(new Pile(it->id, it->inflated_len));
   }
@@ -179,28 +184,33 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
     //MapSequences(sequences, extended_overlaps, timer, param);
   }
 
-  // std::ofstream outdata;
-  // outdata.open("minimizer_piles_multi.csv");
-  // std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
-  // for (int i = 0; i < (int)graph_.piles_.size(); i++) {
-  //   outdata << sequences[i].get()->name << "\t";
-  //   auto kmer_data = graph_.piles_[i]->get_sketch_data();
-  //   //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-  //   if (kmer_data.size() == 0) {
-  //     continue;
-  //   }
-  //  // std::vector<uint16_t> coverages = kmer_data.second;
-  //   for (int i = 0; i < (int)kmer_data.size(); i++) {
-  //     outdata << kmer_data[i] << ",";;
-  //   }
-  //   outdata << "\t";
-  //   auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-  //   for (int i = 0; i < (int)kmer_ids.size();i++) {
-  //       outdata << kmer_ids[i] << ",";;
-  //     }
-  //   outdata << std::endl;
 
-  // };
+  std::cout << "Writing pile data to minimizer_piles_multi.csv" << std::endl;
+  for (int i = 0; i < (int)graph_.piles_.size(); i++) {
+    std::ofstream outdata;
+    outdata.open("minimizer_piles_multi_" + sequences[i].get()->name + ".csv");
+   // outdata << sequences[i].get()->name << "\t";
+    auto kmer_data = graph_.piles_[i]->get_sketch_data();
+    auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+    auto base_qualities = graph_.piles_[i]->get_base_qualities();
+    //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
+    if (kmer_data.size() == 0) {
+      continue;
+    }
+   // std::vector<uint16_t> coverages = kmer_data.second;
+    for (int i = 0; i < (int)kmer_data.size(); i++) {
+      outdata << kmer_data[i] << "\t" << kmer_ids[i] << "\t" << base_qualities[i] << std::endl;
+    }
+    //outdata << "\t";
+    
+   // for (int i = 0; i < (int)kmer_ids.size();i++) {
+     //   outdata << kmer_ids[i] << ",";;
+      //}
+    //outdata << std::endl;
+    outdata.close();
+  };
+
+  exit(0);
 
   // outdata.close();
 /*
@@ -361,27 +371,90 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     param.gap_size,
     param.fraction,
     param.coverage,
+    0.5f,
+    "/mnt/share1_Jabba/ftomas/fastk_counts/badread_ONT_k21/chr19",
     param.minimizers
     };
+  const std::string cnnont_path =
+    "/home/ftomas/github/draven/third_party/pytorch_model/CNNONT_model_v1.int8.ts.pt";
+  at::set_num_threads(1);
+  at::set_num_interop_threads(1);
+  std::vector<std::vector<float>> all_features {};
+  std::cerr << "aaaaa" << std::endl;
 
   auto sketch_sequence = [&](std::uint32_t i) -> void {
-    auto tmp = minimizer_engine.SketchRead(sequences[i], param.kmer_len);
-    //auto tmp_2 = window_min(tmp);
-    std::vector<std::uint16_t> sketch {};
-    std::vector<std::uint64_t> ids {};
-    for(auto &element : tmp){
-      sketch.push_back(element.second);
-      ids.push_back(element.first);
-    }
+
+    // --- existing sketch ---
+    // std::vector<std::pair<uint64_t, float>> tmp = minimizer_engine.SketchRead(sequences[i], param.kmer_len);
+
+    // const size_t N = tmp.size();
+    // std::vector<float> sketch(N);
+    // std::vector<std::uint64_t> ids(N);
+
+    // for (size_t p = 0; p < N; ++p) {
+    //   // assuming tmp[p] is something like pair<uint64_t, uint16_t/float>
+    //   ids[p] = tmp[p].first;
+    //   sketch[p] = tmp[p].second;
+    // }
+    std::vector<std::uint64_t> ids;
+    std::vector<float> sketch;
+    std::vector<std::uint32_t> base_qualities;
+    minimizer_engine.FastKSketchReadInto(sequences[i], 1U, ids, sketch, base_qualities);
+
     graph_.piles_[i]->set_k_kmer_ids(ids);
     graph_.piles_[i]->set_sketch(sketch);
+    graph_.piles_[i]->set_quality_data(base_qualities);
+    // graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
 
-    graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
-    // here should come the code that translates the sketch into calls
-    graph_.piles_[i]->classify_sketch_kmers(minimizer_engine.hom_peak(), 64U, param.kmer_len, param.fraction);
+    // const int64_t L = static_cast<int64_t>(sketch.size());
+    // if (L == 0) return;
+
+    // const float g0 = static_cast<float>(minimizer_engine.hom_peak());
+    // const float g1 = 1.0f;
+
+    // torch::InferenceMode guard;
+
+    // // ---------------------------------------------------------
+    // // Thread-local module (avoids contention on shared module)
+    // // ---------------------------------------------------------
+    // thread_local torch::jit::script::Module cnnont_local =
+    //     torch::jit::load(cnnont_path, torch::kCPU);
+
+    // thread_local bool cnnont_inited = false;
+    // if (!cnnont_inited) {
+    //   cnnont_local.eval();
+    //   cnnont_inited = true;
+    // }
+
+    // // Thread-local reuse
+    // thread_local torch::Tensor g_buf;
+    // thread_local std::vector<torch::jit::IValue> inputs;
+
+    // // Wrap memory directly (NO clone)
+    // auto x = torch::from_blob(
+    //     sketch.data(),
+    //     {1, 1, L},
+    //     torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU)
+    // );
+
+    // if (!g_buf.defined()) {
+    //   g_buf = torch::empty({1, 2},
+    //     torch::TensorOptions().dtype(torch::kFloat32).device(torch::kCPU));
+    // }
+    // g_buf[0][0] = g0;
+    // g_buf[0][1] = g1;
+
+    // inputs.clear();
+    // inputs.push_back(x);
+    // inputs.push_back(g_buf);
+
+    // torch::Tensor logits = cnnont_local.forward(inputs).toTensor();
+    // volatile float sink = logits.reshape({-1})[0].item<float>();
+    // (void)sink;
   };
 
   auto map_sequences = [&](std::uint32_t i) -> std::vector<extended_overlap> { // map sequences
+  //auto map_sequences = [&](std::uint32_t i) -> std::vector<std::vector<float>> { // map sequences
     std::vector<biosoup::Overlap> ovlps = minimizer_engine.Map(sequences[i], true, true,
                                                                false);
 
@@ -390,6 +463,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
       std::vector<extended_overlap> ovlps_final;
       std::vector<extended_overlap> ovlps_tmp;
       std::vector<biosoup::Overlap> no_dups_overlaps;
+      std::vector<std::vector<float>> features {};
         
       std::sort(ovlps.begin(), ovlps.end(),
           [&](const biosoup::Overlap &lhs,
@@ -468,54 +542,71 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
           total_ovlp.q_hor = graph_.piles_[total_ovlp.overlap.lhs_id]->is_hor();
           total_ovlp.t_hor = graph_.piles_[total_ovlp.overlap.rhs_id]->is_hor();
 
-          std::vector<float> model_input {
-            static_cast<float>(total_ovlp.overlap.score),
-            static_cast<float>(total_ovlp.extended_length),
-            static_cast<float>(total_ovlp.found_length),
-            static_cast<float>(overlap_length(total_ovlp.overlap) / total_ovlp.found_length),
-            static_cast<float>(total_ovlp.overlap.score / overlap_length(total_ovlp.overlap)),
-            static_cast<float>(total_ovlp.lhs_hap),
-            static_cast<float>(total_ovlp.rhs_hap),
-            static_cast<float>(total_ovlp.lhs_err),
-            static_cast<float>(total_ovlp.rhs_err),
-            static_cast<float>(total_ovlp.lhs_rep),
-            static_cast<float>(total_ovlp.rhs_rep),
-            static_cast<float>(total_ovlp.lhs_hap / (total_ovlp.rhs_hap + 0.0001f)),
-            static_cast<float>(total_ovlp.q_hor),
-            static_cast<float>(total_ovlp.t_hor)
+          std::vector<float> model_input{
+              static_cast<float>(total_ovlp.overlap.score),
+              static_cast<float>(total_ovlp.extended_length),
+              static_cast<float>(total_ovlp.found_length),
+
+              // make sure division is done in float/double
+              static_cast<float>(
+                  static_cast<double>(total_ovlp.found_length) /
+                  static_cast<double>(total_ovlp.extended_length)
+              ),
+              static_cast<float>(
+                  static_cast<double>(total_ovlp.overlap.score) /
+                  static_cast<double>(total_ovlp.found_length)
+              ),
+
+              static_cast<float>(total_ovlp.lhs_hap),
+              static_cast<float>(total_ovlp.rhs_hap),
+              static_cast<float>(total_ovlp.lhs_err),
+              static_cast<float>(total_ovlp.rhs_err),
+              static_cast<float>(total_ovlp.lhs_rep),
+              static_cast<float>(total_ovlp.rhs_rep),
+
+              // here you're already forcing float via + 0.0001f, so this one is fine:
+              static_cast<float>(total_ovlp.lhs_hap / (total_ovlp.rhs_hap + 0.0001f)),
+
+              static_cast<float>(total_ovlp.q_hor),
+              static_cast<float>(total_ovlp.t_hor)
           };
 
           auto sigmoid = [](double x) { return 1.0 / (1.0 + std::exp(-x)); };
           double logits = ApplyCatboostModel(model_input);
           total_ovlp.classification_label = sigmoid(logits) >= 0.5 ? 1 : 0;
+          //total_ovlp.classification_label = ApplyCatboostModel(model_input);
 
           ovlps_final.emplace_back(total_ovlp);
+          //features.emplace_back(model_input);
 
       }
       return ovlps_final;
+      //return features;
     }
 
     std::vector<extended_overlap> total_ovlps{};
     return total_ovlps;
+    //return std::vector<std::vector<float>>{};
   };
 
   
   if(!param.minimizers){
-    std::vector<std::unique_ptr<biosoup::NucleicAcid>> targets2;
-    targets2.reserve(sequences.size());
-    for (auto const& p : sequences) {
-      // deep copy the object, keep original 'targets' untouched
-      targets2.emplace_back(new biosoup::NucleicAcid(*p));
-    }
-    std::vector<std::unique_ptr<ReadRec>> targets_ext;
-    targets_ext.reserve(targets2.size());
-    for (auto& p : targets2) {
-      // move the parsed nucleic acid into the record
-      std::unique_ptr<ReadRec> rec(new ReadRec{std::move(p), {}});
-      targets_ext.emplace_back(std::move(rec));
-    }
-      minimizer_engine.Count(targets_ext.begin(), targets_ext.begin() + static_cast<std::ptrdiff_t>(targets_ext.size()*param.fraction), param.fraction, false);
-      minimizer_engine.HistFastExact(targets_ext.begin(), targets_ext.begin() + static_cast<std::ptrdiff_t>(targets_ext.size()*param.fraction));
+    // std::vector<std::unique_ptr<biosoup::NucleicAcid>> targets2;
+    // targets2.reserve(sequences.size());
+    // for (auto const& p : sequences) {
+    //   // deep copy the object, keep original 'targets' untouched
+    //   targets2.emplace_back(new biosoup::NucleicAcid(*p));
+    // }
+    // std::vector<std::unique_ptr<ReadRec>> targets_ext;
+    // targets_ext.reserve(targets2.size());
+    // for (auto& p : targets2) {
+    //   // move the parsed nucleic acid into the record
+    //   std::unique_ptr<ReadRec> rec(new ReadRec{std::move(p), {}});
+    //   targets_ext.emplace_back(std::move(rec));
+    // }
+    //   minimizer_engine.Count(targets_ext.begin(), targets_ext.begin() + static_cast<std::ptrdiff_t>(targets_ext.size()*param.fraction), param.fraction, false);
+    //   minimizer_engine.HistFastExact(targets_ext.begin(), targets_ext.begin() + static_cast<std::ptrdiff_t>(targets_ext.size()*param.fraction));
+    minimizer_engine.LoadFastK();
   }
   for (std::uint32_t i = 0, j = 0; i < sequences.size(); ++i) {
     bytes += sequences[i]->inflated_len;
@@ -544,7 +635,8 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     for (std::uint32_t k = 0; k < extended_overlaps.size(); ++k) {
       num_overlaps[k] = extended_overlaps[k].size();
     }
-  
+    
+    std::cerr << "Starting sketching" << std::endl;
     std::vector<std::future<void>> sketch_futures;
     for (std::uint32_t k = j; k < i + 1; ++k) {
       sketch_futures.emplace_back(thread_pool_->Submit(sketch_sequence, k));
@@ -553,6 +645,9 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
       it.wait();
     }
     sketch_futures.clear();
+    std::cerr << "[raven::Graph::Construct] sketched sequences "
+              << std::fixed << timer.Stop() << "s"
+              << std::endl;
     
     // std::ofstream sketch_out("sketches.txt");
     // for (const auto &it : graph_.piles_) {
@@ -593,35 +688,44 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     // for(auto &it : sequences){
     //   map_sequences(it->id);
     // }
+    
+    //std::vector<std::future<std::vector<std::vector<float>>>> thread_futures;
+//     for (std::uint32_t k = 0; k < i + 1; ++k) {
+//      // if(!graph_.piles_[i]->is_hor()){
+//         thread_futures.emplace_back(thread_pool_->Submit(map_sequences, k));
 
-    for (std::uint32_t k = 0; k < i + 1; ++k) {
-     // if(!graph_.piles_[i]->is_hor()){
-        thread_futures.emplace_back(thread_pool_->Submit(map_sequences, k));
+//         bytes += sequences[k]->inflated_len;
+//         if (k != i && bytes < (1U << 30)) {
+//           continue;
+//         }
+//         bytes = 0;
 
-        bytes += sequences[k]->inflated_len;
-        if (k != i && bytes < (1U << 30)) {
-          continue;
-        }
-        bytes = 0;
+//         for (auto &it : thread_futures) {
+//           for (const auto &jt : it.get()) {
+//             extended_overlaps[jt.overlap.lhs_id].emplace_back(jt);
+//             // //overlaps.emplace_back(jt.overlap);
+//             extended_overlaps[jt.overlap.rhs_id].emplace_back(feature_overlap_reverse(jt));
+//             //overlaps.emplace_back(overlap_reverse(jt.overlap));
+//           //  all_features.emplace_back(jt);
+//           }
+//         }
+//         thread_futures.clear();
+//  //     }
 
-        for (auto &it : thread_futures) {
-          for (const auto &jt : it.get()) {
-            extended_overlaps[jt.overlap.lhs_id].emplace_back(jt);
-            //overlaps.emplace_back(jt.overlap);
-            extended_overlaps[jt.overlap.rhs_id].emplace_back(feature_overlap_reverse(jt));
-            //overlaps.emplace_back(overlap_reverse(jt.overlap));
-          }
-        }
-        thread_futures.clear();
- //     }
+//       std::cerr << "[raven::Graph::Construct] mapped sequences "
+//                 << std::fixed << timer.Stop() << "s"
+//                 << std::endl;
 
-      std::cerr << "[raven::Graph::Construct] mapped sequences "
-                << std::fixed << timer.Stop() << "s"
-                << std::endl;
-
-      j = i + 1;
-    }
+//       j = i + 1;
+//     }
   }
+  // for(auto& f : all_features){
+  //   for (const auto &it : f){
+  //     std::cout << it << "\t";
+  //   }
+  //   std::cout << "\n";
+  // }
+  // exit(0);
 }
 
 /*void Graph_Constructor::MapSequences(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,

@@ -38,12 +38,16 @@ namespace raven {
       return data_;
     }
 
-    std::vector<std::uint16_t> get_sketch_data() const {
+    std::vector<float> get_sketch_data() const {
       return sketch_data_;
     }
 
     std::vector<std::uint64_t> get_k_kmer_ids() const {
       return k_mer_ids_;
+    }
+
+    std::vector<std::uint32_t> get_base_qualities() const {
+      return quality_data_;
     }
 
     std::vector<kMerType> get_kmer_types() const {
@@ -224,10 +228,11 @@ namespace raven {
     // remove all repetitive regions
     void ClearRepetitiveRegions();
 
-    void set_sketch(std::vector<std::uint16_t> sketch);
+    void set_sketch(std::vector<float> sketch);
 
     void set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids);
 
+    void set_quality_data(std::vector<std::uint32_t> quality_data);
   private:
     Pile() = default;
 
@@ -271,8 +276,9 @@ namespace raven {
     bool is_repetitive_;
     bool is_hor_;
     std::vector<std::uint16_t> data_;
-    std::vector<std::uint16_t> sketch_data_;
+    std::vector<float> sketch_data_;
     std::vector<std::uint64_t> k_mer_ids_;
+    std::vector<std::uint32_t> quality_data_;
     std::vector<bool> kmers_;
     std::vector<kMerType> kmer_types_;
     std::vector<Region> chimeric_regions_;

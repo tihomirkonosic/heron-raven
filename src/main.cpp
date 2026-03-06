@@ -14,12 +14,8 @@
 
 //#include "catboost_model.hpp"
 #include "cmath"
-
-#ifdef KMC_BIN_DIR
-  #include "kmc_file.h"
-  #include "kmer_api.h"
-#endif
 #include <sstream>
+#include <torch/script.h>
 
 std::atomic<std::uint32_t> biosoup::NucleicAcid::num_objects{0};
 
