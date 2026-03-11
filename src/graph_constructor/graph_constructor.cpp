@@ -20,6 +20,7 @@
 #include <atomic>
 #include <mutex>
 #include <iostream>
+#include <numeric>
 
 namespace raven {
 
@@ -192,14 +193,15 @@ void Graph_Constructor::ConstructOverlaps(std::vector<std::unique_ptr<biosoup::N
    // outdata << sequences[i].get()->name << "\t";
     auto kmer_data = graph_.piles_[i]->get_sketch_data();
     auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
-    auto base_qualities = graph_.piles_[i]->get_base_qualities();
+    auto avg_base_qualities = graph_.piles_[i]->get_avg_base_qualities();
+    auto min_base_qualities = graph_.piles_[i]->get_min_base_qualities();
     //auto kmer_ids = graph_.piles_[i]->get_k_kmer_ids();
     if (kmer_data.size() == 0) {
       continue;
     }
    // std::vector<uint16_t> coverages = kmer_data.second;
     for (int i = 0; i < (int)kmer_data.size(); i++) {
-      outdata << kmer_data[i] << "\t" << kmer_ids[i] << "\t" << base_qualities[i] << std::endl;
+      outdata << kmer_data[i] << "\t" << kmer_ids[i] << "\t" << avg_base_qualities[i] << "\t" << min_base_qualities[i] << std::endl;
     }
     //outdata << "\t";
     
@@ -398,12 +400,13 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     // }
     std::vector<std::uint64_t> ids;
     std::vector<float> sketch;
-    std::vector<std::uint32_t> base_qualities;
-    minimizer_engine.FastKSketchReadInto(sequences[i], 1U, ids, sketch, base_qualities);
+    std::vector<std::uint32_t> avg_base_qualities;
+    std::vector<std::uint32_t> min_base_qualities;
+    minimizer_engine.FastKSketchReadInto(sequences[i], 1U, ids, sketch, avg_base_qualities, min_base_qualities);
 
     graph_.piles_[i]->set_k_kmer_ids(ids);
     graph_.piles_[i]->set_sketch(sketch);
-    graph_.piles_[i]->set_quality_data(base_qualities);
+    graph_.piles_[i]->set_quality_data(avg_base_qualities, min_base_qualities);
     // graph_.piles_[i]->check_HOR(minimizer_engine.hom_peak());
 
     // const int64_t L = static_cast<int64_t>(sketch.size());

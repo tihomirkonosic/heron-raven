@@ -46,8 +46,12 @@ namespace raven {
       return k_mer_ids_;
     }
 
-    std::vector<std::uint32_t> get_base_qualities() const {
-      return quality_data_;
+    std::vector<std::uint32_t> get_avg_base_qualities() const {
+      return avg_quality_data_;
+    }
+
+    std::vector<std::uint32_t> get_min_base_qualities() const {
+      return min_quality_data_;
     }
 
     std::vector<kMerType> get_kmer_types() const {
@@ -232,7 +236,7 @@ namespace raven {
 
     void set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids);
 
-    void set_quality_data(std::vector<std::uint32_t> quality_data);
+    void set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data);
   private:
     Pile() = default;
 
@@ -278,7 +282,8 @@ namespace raven {
     std::vector<std::uint16_t> data_;
     std::vector<float> sketch_data_;
     std::vector<std::uint64_t> k_mer_ids_;
-    std::vector<std::uint32_t> quality_data_;
+    std::vector<std::uint32_t> avg_quality_data_;
+     std::vector<std::uint32_t> min_quality_data_;
     std::vector<bool> kmers_;
     std::vector<kMerType> kmer_types_;
     std::vector<Region> chimeric_regions_;

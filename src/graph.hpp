@@ -200,7 +200,7 @@ namespace biosoup {
         sequence.id,
         sequence.name,
         sequence.deflated_data,
-        sequence.block_quality,
+        sequence.quality,
         sequence.inflated_len,
         sequence.is_reverse_complement);
   }

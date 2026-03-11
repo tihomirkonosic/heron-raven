@@ -32,8 +32,8 @@ find_package(biosoup 0.10.0 QUIET)
 if (NOT biosoup_FOUND)
   FetchContent_Declare(
     biosoup
-    GIT_REPOSITORY https://github.com/rvaser/biosoup
-    GIT_TAG 0.10.0)
+    GIT_REPOSITORY https://github.com/FilipTomas/biosoup
+    GIT_TAG master)
   FetchContent_GetProperties(biosoup)
   if (NOT biosoup_POPULATED)
     FetchContent_Populate(biosoup)

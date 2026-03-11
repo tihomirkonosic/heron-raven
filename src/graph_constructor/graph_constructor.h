@@ -7,6 +7,7 @@
 #include "pile.hpp"
 #include "option_manager.h"
 #include "biosoup/timer.hpp"
+#include <numeric>
 
 namespace raven {
 

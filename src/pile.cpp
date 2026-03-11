@@ -6,6 +6,7 @@
 #include <deque>
 #include <limits>
 #include <string>
+#include <numeric>
 
 namespace raven {
 
@@ -82,11 +83,12 @@ namespace raven {
 
   }
 
-  void Pile::set_quality_data(std::vector<std::uint32_t> quality_data){
-    if (quality_data.empty()){
+  void Pile::set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data){
+    if (avg_quality_data.empty() || min_quality_data.empty()){
       return;
     }
-    quality_data_ = quality_data;
+    avg_quality_data_ = avg_quality_data;
+    min_quality_data_ = min_quality_data;
   };
 
   void Pile::check_HOR(std::uint32_t hom_peak) {
