@@ -7,6 +7,8 @@
 #include <limits>
 #include <string>
 #include <numeric>
+#include <set>
+
 
 namespace raven {
 
@@ -169,6 +171,65 @@ namespace raven {
     };
     kmer_types_.insert(kmer_types_.begin(), kmer_len - 1, kMerType::None);
   }
+
+std::vector<std::pair<std::uint32_t, std::uint32_t>> Pile::find_region_positions(kMerType type){
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> positions;
+    bool region = false;
+    std::uint32_t start = 0;
+    std::uint32_t end = 0;
+    for(std::uint32_t i = 0; i < kmer_types_.size(); i++){
+      if((kmer_types_[i] == type) && (region == false)){
+        start = i;
+        region = true;
+      } else if ((kmer_types_[i] == type) && (region == true))
+      {
+        end = i;
+      } else if ((kmer_types_[i] != type) && (region == true)){
+        region = false;
+        positions.emplace_back((start, end));
+      }
+    }
+    return positions;
+};
+
+std::set<std::uint64_t> Pile::k_mers_in_region(std::uint32_t start, std::uint32_t end){
+  std::set<std::uint64_t> kmers;
+  for(std::uint32_t i = start; i<=end; i++){
+    kmers.insert(k_mer_ids_[i]);
+  }
+  return kmers;
+};
+
+float Pile::calc_jaccard(const std::set<std::uint64_t>& set1,
+                         const std::set<std::uint64_t>& set2){
+  auto it1 = set1.begin();
+  auto it2 = set2.begin();
+
+  size_t intersection = 0;
+  size_t union_count = 0;
+  
+  while(it1 != set1.end() && it2 != set2.end()){
+    if(*it1 == *it2){
+      ++intersection;
+      ++union_count;
+      ++it1;
+      ++it2;
+    } else if(*it1 < *it2){
+      ++union_count;
+      ++it1;
+    } else {
+      ++union_count;
+      ++it2;
+    };
+  };
+
+  union_count += std::distance(it1, set1.end());
+  union_count += std::distance(it2, set2.end());
+
+  if (union_count == 0) return 0.0f;
+
+  return static_cast<float>(intersection) / static_cast<float>(union_count);
+};
 
   // void Pile::PrintKmerTypes() {
   //   std::cout 

@@ -117,6 +117,8 @@ namespace raven {
     }
 
 
+
+
     void check_HOR(std::uint32_t hom_peak);
 
     std::uint32_t id() const {
@@ -237,6 +239,13 @@ namespace raven {
     void set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids);
 
     void set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data);
+
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> find_region_positions(kMerType type);
+
+    std::set<std::uint64_t> k_mers_in_region(std::uint32_t start, std::uint32_t end);
+
+    float Pile::calc_jaccard(const std::set<std::uint64_t>& set1,
+                         const std::set<std::uint64_t>& set2);
   private:
     Pile() = default;
 
