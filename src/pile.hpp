@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#include <set>
 
 #include "biosoup/nucleic_acid.hpp"
 #include "biosoup/overlap.hpp"
@@ -244,7 +245,7 @@ namespace raven {
 
     std::set<std::uint64_t> k_mers_in_region(std::uint32_t start, std::uint32_t end);
 
-    float Pile::calc_jaccard(const std::set<std::uint64_t>& set1,
+    float calc_jaccard(const std::set<std::uint64_t>& set1,
                          const std::set<std::uint64_t>& set2);
   private:
     Pile() = default;

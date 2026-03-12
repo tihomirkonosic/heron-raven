@@ -374,7 +374,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     param.fraction,
     param.coverage,
     0.5f,
-    "/mnt/share1_Jabba/ftomas/fastk_counts/badread_ONT_k21/chr19",
+    "/mnt/share1_Jabba/ftomas/fastk_counts/badread_ONT_k21/chr18",
     param.minimizers
     };
   const std::string cnnont_path =

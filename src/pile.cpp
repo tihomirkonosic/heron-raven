@@ -186,7 +186,7 @@ std::vector<std::pair<std::uint32_t, std::uint32_t>> Pile::find_region_positions
         end = i;
       } else if ((kmer_types_[i] != type) && (region == true)){
         region = false;
-        positions.emplace_back((start, end));
+        positions.emplace_back(std::pair(start, end));
       }
     }
     return positions;
