@@ -4,6 +4,11 @@
 #include <vector>
 #include "biosoup/overlap.hpp"
 
+
+// Backbone - strong prefix-suffx, StrongContain - strong contain, WeakBackbone - weak between 2 piles marked as backbones(those with at 
+// least 1 strong prefix-suffx overlap), WeakConnecting - one backbone and one none backbone, Weak - weak between 2 non-backbone piles, None
+enum class overlapCategory : std::uint8_t { Backbone = 0, StrongContained = 1, WeakBackbone = 2, WeakConnecting = 3, Weak = 4,  None = 5};
+
 struct edlib_align {
   std::uint32_t matches;
   std::uint32_t block_length;
@@ -47,6 +52,42 @@ struct extended_overlap {
 
   bool q_hor;
   bool t_hor;
+
+  float jaccard_index;
+  bool hap_regions;
+
+  float diploid_jaccard_longer;
+  float diploid_jaccard_shorter;
+
+  float error_jaccard_longer;
+  float error_jaccard_shorter;
+  float diploid_jaccard_full_overlap;
+  float jaccard_non_extended_overlap;
+
+  std::uint32_t longer_overhang_len;
+  std::uint32_t shorter_overhang_len;
+
+  float hap_rate_shorter_overhang_lhs;
+  float hap_rate_longer_overhang_lhs;
+
+  float hap_rate_shorter_overhang_rhs;
+  float hap_rate_longer_overhang_rhs;
+
+  float dip_rate_shorter_overhang_lhs;
+  float dip_rate_longer_overhang_lhs;
+
+  float dip_rate_shorter_overhang_rhs;
+  float dip_rate_longer_overhang_rhs;
+
+  float err_rate_shorter_overhang_lhs;
+  float err_rate_longer_overhang_lhs;
+
+  float err_rate_shorter_overhang_rhs;
+  float err_rate_longer_overhang_rhs;
+
+  bool backbone_overlap;
+  overlapCategory cat;
+  bool candidate_overlap;
 
   int classification_label;
 };

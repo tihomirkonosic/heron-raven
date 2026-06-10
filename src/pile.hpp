@@ -20,7 +20,7 @@
 namespace raven {
 
   constexpr std::uint32_t kPSS = 4;  // shrink 2 ^ kPSS times
-  enum class kMerType : std::uint8_t { Haploid = 0, Diploid = 1, Repetitive = 2, Error = 3, None = 4 };
+  enum class kMerType : std::uint8_t { Haploid = 0, Diploid = 1, Error = 2, Repetitive = 3, None = 4 };
   class Pile {
   public:
     Pile(std::uint32_t id, std::uint32_t len);
@@ -118,6 +118,19 @@ namespace raven {
     }
 
 
+    float return_ratio(std::uint32_t start, uint32_t end, kMerType kmer_type){
+      if(kmer_types_.empty() || start >= end || end > kmer_types_.size()){
+        return 0.0;
+      }
+
+      float total = 0.0;
+      for(std::uint32_t i = start; i < end; ++i){
+        if(kmer_types_[i] == kmer_type){
+          total += 1.0;
+        }
+      }
+      return total / (end - start);
+    }
 
 
     void check_HOR(std::uint32_t hom_peak);
@@ -186,6 +199,38 @@ namespace raven {
       is_hor_ = true;
     }
 
+    float get_hor_percent() const {
+      return hor_percent_;
+    }
+
+    void set_hor_percent(float p) {
+      hor_percent_ = p;
+    }
+
+    void set_k_mer_types(std::vector<kMerType> tmp){
+      kmer_types_ = tmp;
+    }
+
+    void clear_k_mer_types(){
+      kmer_types_.clear();
+    }
+
+    void set_backbone(){
+      backbone_pile_ = true;
+    }
+
+    bool is_backbone(){
+      return backbone_pile_;
+    }
+
+    void set_strong_contained(){
+      strong_contained_ = true;
+    }
+
+    bool is_strong_contained(){
+      return strong_contained_;
+    }
+
     // add coverage
     void AddLayers(
         std::vector<biosoup::Overlap>::const_iterator begin,
@@ -241,12 +286,11 @@ namespace raven {
 
     void set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data);
 
-    std::vector<std::pair<std::uint32_t, std::uint32_t>> find_region_positions(kMerType type);
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> find_region_positions(kMerType type, std::uint32_t span_start, std::uint32_t span_end);
 
     std::set<std::uint64_t> k_mers_in_region(std::uint32_t start, std::uint32_t end);
 
-    float calc_jaccard(const std::set<std::uint64_t>& set1,
-                         const std::set<std::uint64_t>& set2);
+    
   private:
     Pile() = default;
 
@@ -289,6 +333,7 @@ namespace raven {
     bool is_chimeric_;
     bool is_repetitive_;
     bool is_hor_;
+    float hor_percent_ = 0.f;
     std::vector<std::uint16_t> data_;
     std::vector<float> sketch_data_;
     std::vector<std::uint64_t> k_mer_ids_;
@@ -298,6 +343,8 @@ namespace raven {
     std::vector<kMerType> kmer_types_;
     std::vector<Region> chimeric_regions_;
     std::vector<Region> repetitive_regions_;
+    bool backbone_pile_;
+    bool strong_contained_;
   };
 
 }  // namespace raven

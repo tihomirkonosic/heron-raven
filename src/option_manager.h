@@ -13,12 +13,12 @@ struct Program_Parameters {
   std::uint8_t kmer_len = 21;
   std::uint8_t window_len = 21;
   std::uint16_t bandwidth = 200;
-  std::uint16_t chain_n = 6;
-  std::uint16_t match_n = 250;
+  std::uint16_t chain_n = 4;
+  std::uint16_t match_n = 200;
   std::uint16_t gap_size = 500;
   double fraction = 1; // fraction of sequences to use for kmer counting
-  double freq = 5000;
-  std::uint32_t coverage = 0;
+  double freq = 1000;
+  std::uint32_t coverage = 50;
   bool hpc = false;
   bool minimizers = false;
 

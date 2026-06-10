@@ -134,7 +134,28 @@ inline extended_overlap feature_overlap_reverse(const extended_overlap &eo) {
   res.score_to_length = eo.score_to_length;
   res.found_to_extended_length = eo.found_to_extended_length;
   res.hap_ratio = eo.hap_ratio;
+  res.jaccard_index = eo.jaccard_index;
+  res.q_hor = eo.q_hor;
+  res.t_hor = eo.t_hor;
   res.classification_label = eo.classification_label;
+  res.diploid_jaccard_longer = eo.diploid_jaccard_longer;
+  res.diploid_jaccard_shorter = eo.diploid_jaccard_shorter;
+  res.diploid_jaccard_full_overlap = eo.diploid_jaccard_full_overlap;
+  res.longer_overhang_len = eo.longer_overhang_len;
+  res.shorter_overhang_len = eo.shorter_overhang_len;
+  res.jaccard_non_extended_overlap = eo.jaccard_non_extended_overlap;
+  res.dip_rate_longer_overhang_lhs = eo.dip_rate_longer_overhang_rhs;
+  res.dip_rate_longer_overhang_rhs = eo.dip_rate_longer_overhang_lhs;
+  res.dip_rate_shorter_overhang_lhs = eo.dip_rate_shorter_overhang_rhs;
+  res.dip_rate_shorter_overhang_rhs = eo.dip_rate_shorter_overhang_lhs;
+  res.hap_rate_longer_overhang_lhs = eo.hap_rate_longer_overhang_rhs;
+  res.hap_rate_longer_overhang_rhs = eo.hap_rate_longer_overhang_lhs;
+  res.hap_rate_shorter_overhang_lhs = eo.hap_rate_shorter_overhang_rhs;
+  res.hap_rate_shorter_overhang_rhs = eo.hap_rate_shorter_overhang_lhs;
+  res.err_rate_longer_overhang_lhs = eo.err_rate_longer_overhang_rhs;
+  res.err_rate_longer_overhang_rhs = eo.err_rate_longer_overhang_lhs;
+  res.err_rate_shorter_overhang_lhs = eo.err_rate_shorter_overhang_rhs;
+  res.err_rate_shorter_overhang_rhs = eo.err_rate_shorter_overhang_lhs;
   return res;
 }
 
@@ -209,37 +230,77 @@ inline bool overlap_update(biosoup::Overlap &o, raven::Graph &graph)  {
 inline std::uint32_t overlap_type(const biosoup::Overlap &o, raven::Graph &graph) {
   std::uint32_t lhs_length =
     graph.piles_[o.lhs_id]->end() - graph.piles_[o.lhs_id]->begin();
-  std::uint32_t lhs_begin = o.lhs_begin - graph.piles_[o.lhs_id]->begin();
-  std::uint32_t lhs_end = o.lhs_end - graph.piles_[o.lhs_id]->begin();
+  // std::uint32_t lhs_begin = o.lhs_begin - graph.piles_[o.lhs_id]->begin();
+  // std::uint32_t lhs_end = o.lhs_end - graph.piles_[o.lhs_id]->begin();
 
   std::uint32_t rhs_length =
     graph.piles_[o.rhs_id]->end() - graph.piles_[o.rhs_id]->begin();
-  std::uint32_t rhs_begin = //o.strand ?
-                            o.rhs_begin - graph.piles_[o.rhs_id]->begin(); 
-                            //rhs_length - (o.rhs_end - graph.piles_[o.rhs_id]->begin());
-  std::uint32_t rhs_end = //o.strand ?
-                          o.rhs_end - graph.piles_[o.rhs_id]->begin();
-                          //rhs_length - (o.rhs_begin - graph.piles_[o.rhs_id]->begin());
+  // std::uint32_t rhs_begin = //o.strand ?
+  //                           o.rhs_begin - graph.piles_[o.rhs_id]->begin(); 
+  //                           //rhs_length - (o.rhs_end - graph.piles_[o.rhs_id]->begin());
+  // std::uint32_t rhs_end = //o.strand ?
+  //                         o.rhs_end - graph.piles_[o.rhs_id]->begin();
+  //                         //rhs_length - (o.rhs_begin - graph.piles_[o.rhs_id]->begin());
 
-  std::uint32_t overhang =
-    std::min(lhs_begin, rhs_begin) +
-      std::min(lhs_length - lhs_end, rhs_length - rhs_end);
+  // std::uint32_t overhang =
+  //   std::min(lhs_begin, rhs_begin) +
+  //     std::min(lhs_length - lhs_end, rhs_length - rhs_end);
 
-  if (lhs_end - lhs_begin < (lhs_end - lhs_begin + overhang) * 0.875 ||
-    rhs_end - rhs_begin < (rhs_end - rhs_begin + overhang) * 0.875) {
-    return 0;  // internal
-  }
-  if (lhs_begin <= rhs_begin &&
-    lhs_length - lhs_end <= rhs_length - rhs_end) {
+  // if (lhs_end - lhs_begin < (lhs_end - lhs_begin + overhang) * 0.875 ||
+  //   rhs_end - rhs_begin < (rhs_end - rhs_begin + overhang) * 0.875) {
+  //   return 0;  // internal
+  // }
+  if (o.lhs_begin <= o.rhs_begin &&
+    lhs_length - o.lhs_end <= rhs_length - o.rhs_end) {
     return 1;  // lhs contained
   }
-  if (rhs_begin <= lhs_begin &&
-    rhs_length - rhs_end <= lhs_length - lhs_end) {
+  if (o.rhs_begin <= o.lhs_begin &&
+    rhs_length - o.rhs_end <= lhs_length - o.lhs_end) {
     return 2;  // rhs contained
   }
-  if (lhs_begin > rhs_begin) {
+  if (o.lhs_begin > o.rhs_begin) {
     return 3;  // lhs -> rhs
   }
+  return 4;  // rhs -> lhs
+}
+
+
+inline std::uint32_t overlap_type_extended(
+    const biosoup::Overlap& o,
+    raven::Graph& graph,
+    std::uint32_t lhs_length,
+    std::uint32_t rhs_length) {
+
+  (void)graph;  // unused
+
+  std::uint32_t lhs_left  = o.lhs_begin;
+  std::uint32_t lhs_right = lhs_length - o.lhs_end;
+
+  std::uint32_t rhs_left = 0;
+  std::uint32_t rhs_right = 0;
+
+  if (o.strand) {
+    // Positive strand
+    rhs_left  = o.rhs_begin;
+    rhs_right = rhs_length - o.rhs_end;
+  } else {
+    // Negative strand
+    rhs_left  = rhs_length - o.rhs_end;
+    rhs_right = o.rhs_begin;
+  }
+
+  if (lhs_left <= rhs_left && lhs_right <= rhs_right) {
+    return 1;  // lhs contained
+  }
+
+  if (rhs_left <= lhs_left && rhs_right <= lhs_right) {
+    return 2;  // rhs contained
+  }
+
+  if (lhs_left > rhs_left) {
+    return 3;  // lhs -> rhs
+  }
+
   return 4;  // rhs -> lhs
 }
 

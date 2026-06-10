@@ -174,6 +174,7 @@ add_library(raven
   src/option_manager.cpp
   src/graph_constructor/overlap_parser.cpp
   src/graph_constructor/ram_overlap.cpp
+  src/graph_constructor/cnn_preprocessing.cpp
   #src/extended_overlap.cpp
   #src/read_preprocessing.cpp
 )

@@ -44,6 +44,18 @@ private:
                               std::vector<std::vector<extended_overlap>> &overlaps,
                               biosoup::Timer &timer,
                               Program_Parameters &param);
+
+  void ConstructOnlyBackboneGraph(
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+    std::vector<std::vector<extended_overlap>>& overlaps,
+    biosoup::Timer& timer,
+    Program_Parameters& param);
+                        
+  void ConstructBackboneGraph(
+    std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+    std::vector<std::vector<extended_overlap>>& overlaps,
+    biosoup::Timer& timer,
+    Program_Parameters& param);
   
   void ConstructAssemblyGraphInPhases(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                                                std::vector<std::vector<extended_overlap>> &overlaps,
@@ -76,9 +88,10 @@ private:
                            std::vector<std::vector<extended_overlap>> &extended_overlaps,
                            biosoup::Timer &timer,
                            Program_Parameters &param);
-  void ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
-                             std::vector<std::vector<extended_overlap>> &extended_overlaps,
-                             biosoup::Timer &timer);
+void ResolveContainedReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+                            std::vector<std::vector<extended_overlap>>& extended_overlaps,
+                            biosoup::Timer& timer,
+                            std::uint32_t containment_threshold);
   void ResolveContainedReadsGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                               std::vector<std::vector<extended_overlap>> &extended_overlaps,
                               biosoup::Timer &timer);

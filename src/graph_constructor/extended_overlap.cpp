@@ -1,7 +1,7 @@
     #include <cstdint>
     #include "extended_overlap.h"
     #include <vector>
-    
+
     
     struct edlib_align {
       std::uint32_t matches;
@@ -17,10 +17,11 @@
       std::uint32_t total_overlap_snp_mismatches;
       float identity;
       float heterozygosity_rate;
-      std::uint32_t graph_overlap_type;
+      std::uint32_t graph_overlap_type = -1;
       std::uint8_t ol_class;
       bool ground_truth = NULL;
       std::vector<std::pair<std::uint32_t, std::uint32_t>> gap_positions; // odd entries are start positions, even entries are end positions
+      std::uint32_t extended_length = 0;
       std::uint32_t found_length = 0;
       std::uint32_t found_matches = 0;
       std::uint32_t lhs_begin_original;
@@ -43,6 +44,44 @@
 
       bool q_hor = false;
       bool t_hor = false;
+
+      float jaccard_index = 0.0;
+      bool hap_regions = false;
+
+
+      float diploid_jaccard_longer = 0.0;
+      float diploid_jaccard_shorter = 0.0;
+
+      float error_jaccard_longer = 0.0;
+      float error_jaccard_shorter = 0.0;
+      float diploid_jaccard_full_overlap = 0.0;
+      float jaccard_non_extended_overlap = 0.0;
+
+      std::uint32_t longer_overhang_len = 0;
+      std::uint32_t shorter_overhang_len = 0;
+
+      float hap_rate_shorter_overhang_lhs = 0.0;
+      float hap_rate_longer_overhang_lhs = 0.0;
+
+      float hap_rate_shorter_overhang_rhs = 0.0;
+      float hap_rate_longer_overhang_rhs = 0.0;
+
+      float dip_rate_shorter_overhang_lhs = 0.0;
+      float dip_rate_longer_overhang_lhs = 0.0;
+
+      float dip_rate_shorter_overhang_rhs = 0.0;
+      float dip_rate_longer_overhang_rhs = 0.0;
+
+      float err_rate_shorter_overhang_lhs = 0.0;
+      float err_rate_longer_overhang_lhs = 0.0;
+
+      float err_rate_shorter_overhang_rhs = 0.0;
+      float err_rate_longer_overhang_rhs = 0.0;
+
+      bool backbone_overlap = false;
+      bool candidate_overlap = false;
+
+      overlapCategory cat = overlapCategory::None;
 
       int classification_label = -1;
     };

@@ -708,6 +708,7 @@ namespace raven {
            << "\t" << jt.edlib_alignment.matches // residue matches
            << "\t" << jt.edlib_alignment.block_length // alignment block length
            << "\t" << jt.overlap.score
+           << "\t" << jt.graph_overlap_type
            << "\t" << jt.lhs_begin_original
            << "\t" << jt.lhs_end_original
            << "\t" << jt.rhs_begin_original
@@ -725,6 +726,31 @@ namespace raven {
            << "\t" << jt.hap_ratio
            << "\t" << (jt.q_hor ? "1" : "0")
            << "\t" << (jt.t_hor ? "1" : "0")
+           << "\t" << jt.jaccard_index
+           << "\t" << jt.diploid_jaccard_full_overlap
+           << "\t" << jt.diploid_jaccard_longer
+           << "\t" << jt.diploid_jaccard_shorter
+           << "\t" << jt.longer_overhang_len
+           << "\t" << jt.shorter_overhang_len
+           << "\t" << jt.jaccard_non_extended_overlap
+           << "\t" << jt.hap_rate_shorter_overhang_lhs
+           << "\t" << jt.hap_rate_longer_overhang_lhs
+           << "\t" << jt.hap_rate_shorter_overhang_rhs
+           << "\t" << jt.hap_rate_longer_overhang_rhs
+           << "\t" << jt.dip_rate_shorter_overhang_lhs
+           << "\t" << jt.dip_rate_longer_overhang_lhs
+           << "\t" << jt.dip_rate_shorter_overhang_rhs
+           << "\t" << jt.dip_rate_longer_overhang_rhs
+           << "\t" << jt.err_rate_shorter_overhang_lhs
+           << "\t" << jt.err_rate_longer_overhang_lhs
+           << "\t" << jt.err_rate_shorter_overhang_rhs
+           << "\t" << jt.err_rate_longer_overhang_rhs
+           << "\t" << (piles_[jt.overlap.lhs_id]->is_strong_contained() ? "1" : "0")
+           << "\t" << (piles_[jt.overlap.rhs_id]->is_strong_contained() ? "1" : "0")
+           << "\t" << (piles_[jt.overlap.lhs_id]->is_backbone() ? "1" : "0")
+           << "\t" << (piles_[jt.overlap.rhs_id]->is_backbone() ? "1" : "0")
+ //          << "\t" << static_cast<std::uint8_t>(jt.cat)   
+           << "\t" << (jt.candidate_overlap ? "1" : "0")
            << "\t" << jt.classification_label
            << std::endl;
       }
