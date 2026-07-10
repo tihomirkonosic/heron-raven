@@ -33,6 +33,7 @@ enum program_opt {
   opt_fraction,
   opt_coverage,
   opt_minimizers,
+  opt_no_fuse,
   opt_threads,
 
   opt_max_overlaps,
@@ -76,6 +77,7 @@ static struct option options[] = {
     {"fraction", required_argument, nullptr, opt_fraction},
     {"coverage", required_argument, nullptr, opt_coverage},
     {"minimizers", no_argument, nullptr, opt_minimizers},
+    {"no-fuse", no_argument, nullptr, opt_no_fuse},
     {"threads", required_argument, nullptr, opt_threads},
 
     {"max-overlaps", required_argument, nullptr, opt_max_overlaps},
@@ -168,6 +170,11 @@ void Help() {
             "    --coverage <int>\n"
             "      default: 25\n"
             "      haploid sequencing coverage\n"
+            "    --no-fuse\n"
+            "      default: false\n"
+            "      use the un-fused 3-pass FastK path (sketch, index, map done\n"
+            "      separately) instead of the fused single-pass path; FastK counts\n"
+            "      are still loaded (for apples-to-apples benchmarking)\n"
             "    -t, --threads <int>\n"
             "      default: 1\n"
             "      number of threads\n"
@@ -323,6 +330,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_minimizers:
         param.minimizers = true;
+        break;
+      case opt_no_fuse:
+        param.no_fuse = true;
         break;
       case opt_threads:
       case 't':

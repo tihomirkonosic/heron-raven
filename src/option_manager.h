@@ -21,6 +21,7 @@ struct Program_Parameters {
   std::uint32_t coverage = 50;
   bool hpc = false;
   bool minimizers = false;
+  bool no_fuse = false;  // force the un-fused 3-pass FastK path (benchmarking)
 
   std::string error_corrected_reads = "";
   std::string herro_snps_path = "";

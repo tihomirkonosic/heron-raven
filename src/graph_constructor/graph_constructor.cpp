@@ -529,7 +529,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
     std::vector<std::uint32_t> avg_base_qualities;
     std::vector<std::uint32_t> min_base_qualities;
 
-    if (!param.minimizers) {
+    if (!param.minimizers && !param.no_fuse) {
       // Fused: also builds and stores this read's minimizer sketch.
       minimizer_engine.SketchAndMinimizeFastK(
           sequences[i], 1U, ids, sketch, avg_base_qualities, min_base_qualities);
@@ -915,7 +915,7 @@ void Graph_Constructor::MapSequencesFast(std::vector<std::unique_ptr<biosoup::Nu
   // construction (one pass, one FastK lookup per base) and reuse the stored
   // minimizers for both index building and mapping. The minimizers-mode path
   // is left byte-identical.
-  const bool use_fused_fastk = !param.minimizers;
+  const bool use_fused_fastk = !param.minimizers && !param.no_fuse;
   if(!param.minimizers){
     minimizer_engine.LoadFastK();
   }
