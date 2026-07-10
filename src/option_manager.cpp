@@ -20,6 +20,7 @@ enum program_opt {
   opt_load_paf,
   opt_load_gt_overlaps,
   opt_print_gfa_seq,
+  opt_correction_overlaps,
 
   opt_kmer_len,
   opt_window_len,
@@ -62,6 +63,7 @@ static struct option options[] = {
     {"load-paf", required_argument, nullptr, opt_load_paf},
     {"load-gt-overlaps", required_argument, nullptr, opt_load_gt_overlaps},
     {"print-seq", no_argument, nullptr, opt_print_gfa_seq},
+    {"correction-overlaps", no_argument, nullptr, opt_correction_overlaps},
 
     {"kmer-len", required_argument, nullptr, opt_kmer_len},
     {"window-len", required_argument, nullptr, opt_window_len},
@@ -354,6 +356,9 @@ int ProcessParameters(int argc, char **argv, Program_Parameters& param) {
         break;
       case opt_polishing_rounds:
         param.num_polishing_rounds = atoi(optarg);
+        break;
+      case opt_correction_overlaps:
+        param.correction_overlaps = true;
         break;
       default:
         return 1;

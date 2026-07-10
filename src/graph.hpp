@@ -85,8 +85,20 @@ namespace raven {
                        std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, bool print_cigar,
                        const std::string &path) const;
 
+    void PrintCorrectionOverlaps(
+      const std::vector<std::vector<extended_overlap>>& overlaps,
+      const std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+      const std::string& path) const;
+
+  void PrintCorrectionOverlapsWithFeatures(
+      const std::vector<std::vector<extended_overlap>>& overlaps,
+      const std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+      const std::string& path) const;
+
     // draw unitig graph with Bandage
     void PrintUnitigGfa(const std::string &path, const bool print_seq) const;
+
+    void PrintPiles();
 
     // cereal load wrapper
     void Load(const std::string &cereal_path);

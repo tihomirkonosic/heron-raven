@@ -79,10 +79,16 @@ int main(int argc, char **argv) {
       std::cerr << "[raven::] skipped sequence loading" << std::endl;
   }
 
+
   raven::Graph_Constructor graph_constructor{graph, thread_pool};
-  if (!param.skip_contruction){
+  if (!param.skip_contruction && !param.correction_overlaps){
     std::cout << "Constructing graph with params: kmer_size:" << param.kmer_len  << " winodw_size:" << param.window_len << " " << std::endl;
     graph_constructor.Construct(sequences, param);
+  }
+  else if(param.correction_overlaps) {
+    std::cout << "Constructing correction overlaps!" << std::endl;
+    graph_constructor.ConstructCorrectionOverlaps(sequences, param);
+    return 1;
   } else if (param.load_input_gfa) {
     graph_constructor.LoadFromGfa(param.input_gfa_path);
   } else if (param.load_input_paf) {

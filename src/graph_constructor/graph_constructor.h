@@ -23,6 +23,9 @@ public:
   void Construct(
     std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,  // NOLINT
     Program_Parameters &param);
+  
+  void ConstructCorrectionOverlaps(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,  // NOLINT
+    Program_Parameters &param);
 
   void LoadFromGfa(const std::string &gfa_path);
   void LoadFromPaf(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, const std::string &paf_path);
@@ -31,6 +34,16 @@ private:
                          std::vector<std::vector<extended_overlap>> &extended_overlaps,
                          biosoup::Timer &timer,
                          Program_Parameters &param);
+  void ConstructOverlapsForCorrection(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                         std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                         biosoup::Timer &timer,
+                         Program_Parameters &param);
+                         
+  void AlignBackboneReads(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
+                         std::vector<std::vector<extended_overlap>> &extended_overlaps,
+                         biosoup::Timer &timer,
+                         Program_Parameters &param);
+
   void ConstructOverlapsFromGT(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                                std::vector<std::vector<extended_overlap>> &extended_overlaps,
                                biosoup::Timer &timer,
@@ -66,6 +79,8 @@ private:
                            std::vector<std::vector<extended_overlap>> &extended_overlaps,
                            bool load_cigar,
                            Program_Parameters &param);
+
+  void LoadOverlapsAndAlign(Program_Parameters &param, std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences, std::vector<std::vector<extended_overlap>> &extended_overlaps);
   void MapSequences(std::vector<std::unique_ptr<biosoup::NucleicAcid>> &sequences,
                     std::vector<std::vector<extended_overlap>> &extended_overlaps,
                     biosoup::Timer &timer,

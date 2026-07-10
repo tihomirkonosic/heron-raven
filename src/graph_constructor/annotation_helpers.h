@@ -28,7 +28,7 @@ edlib_align edlib_wrapper(
     edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, nullptr, 0)); // align lhs and rhs
 
   if (result.status == EDLIB_STATUS_OK) {
-    alignment_result.cigar = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_EXTENDED);
+    alignment_result.cigar = edlibAlignmentToCigar(result.alignment, result.alignmentLength, EDLIB_CIGAR_STANDARD);
     alignment_result.edit_distance = result.editDistance;
     alignment_result.block_length = result.alignmentLength;
     alignment_result.matches = 0;

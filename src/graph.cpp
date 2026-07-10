@@ -733,24 +733,24 @@ namespace raven {
            << "\t" << jt.longer_overhang_len
            << "\t" << jt.shorter_overhang_len
            << "\t" << jt.jaccard_non_extended_overlap
-           << "\t" << jt.hap_rate_shorter_overhang_lhs
-           << "\t" << jt.hap_rate_longer_overhang_lhs
-           << "\t" << jt.hap_rate_shorter_overhang_rhs
-           << "\t" << jt.hap_rate_longer_overhang_rhs
-           << "\t" << jt.dip_rate_shorter_overhang_lhs
-           << "\t" << jt.dip_rate_longer_overhang_lhs
-           << "\t" << jt.dip_rate_shorter_overhang_rhs
-           << "\t" << jt.dip_rate_longer_overhang_rhs
-           << "\t" << jt.err_rate_shorter_overhang_lhs
-           << "\t" << jt.err_rate_longer_overhang_lhs
-           << "\t" << jt.err_rate_shorter_overhang_rhs
-           << "\t" << jt.err_rate_longer_overhang_rhs
-           << "\t" << (piles_[jt.overlap.lhs_id]->is_strong_contained() ? "1" : "0")
-           << "\t" << (piles_[jt.overlap.rhs_id]->is_strong_contained() ? "1" : "0")
-           << "\t" << (piles_[jt.overlap.lhs_id]->is_backbone() ? "1" : "0")
-           << "\t" << (piles_[jt.overlap.rhs_id]->is_backbone() ? "1" : "0")
- //          << "\t" << static_cast<std::uint8_t>(jt.cat)   
-           << "\t" << (jt.candidate_overlap ? "1" : "0")
+          //  << "\t" << jt.hap_rate_shorter_overhang_lhs
+          //  << "\t" << jt.hap_rate_longer_overhang_lhs
+          //  << "\t" << jt.hap_rate_shorter_overhang_rhs
+          //  << "\t" << jt.hap_rate_longer_overhang_rhs
+          //  << "\t" << jt.dip_rate_shorter_overhang_lhs
+          //  << "\t" << jt.dip_rate_longer_overhang_lhs
+          //  << "\t" << jt.dip_rate_shorter_overhang_rhs
+          //  << "\t" << jt.dip_rate_longer_overhang_rhs
+          //  << "\t" << jt.err_rate_shorter_overhang_lhs
+          //  << "\t" << jt.err_rate_longer_overhang_lhs
+          //  << "\t" << jt.err_rate_shorter_overhang_rhs
+          //  << "\t" << jt.err_rate_longer_overhang_rhs
+//            << "\t" << (piles_[jt.overlap.lhs_id]->is_strong_contained() ? "1" : "0")
+//            << "\t" << (piles_[jt.overlap.rhs_id]->is_strong_contained() ? "1" : "0")
+//            << "\t" << (piles_[jt.overlap.lhs_id]->is_backbone() ? "1" : "0")
+//            << "\t" << (piles_[jt.overlap.rhs_id]->is_backbone() ? "1" : "0")
+//  //          << "\t" << static_cast<std::uint8_t>(jt.cat)   
+//            << "\t" << (jt.candidate_overlap ? "1" : "0")
            << "\t" << jt.classification_label
            << std::endl;
       }
@@ -758,6 +758,220 @@ namespace raven {
 
     os.close();
   }
+
+  void Graph::PrintCorrectionOverlaps(
+      const std::vector<std::vector<extended_overlap>>& overlaps,
+      const std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+      const std::string& path) const {
+
+    if (path.empty()) return;
+
+    auto fix_cigar = [](std::string cigar,
+                        std::uint32_t& qstart, std::uint32_t& qend,
+                        std::uint32_t& tstart, std::uint32_t& tend,
+                        std::uint32_t& trimmed_len) -> std::string {
+        // parse + swap I<->D
+        std::vector<std::pair<int,char>> ops;
+        int num = 0;
+        for (char c : cigar) {
+            if (std::isdigit(c)) { num = num*10 + (c-'0'); }
+            else {
+                char op = c;
+                if (op == 'I') op = 'D';
+                else if (op == 'D') op = 'I';
+                ops.emplace_back(num, op);
+                num = 0;
+            }
+        }
+        trimmed_len = 0;
+        // trim leading non-M
+        size_t lo = 0;
+        while (lo < ops.size() && ops[lo].second != 'M') {
+            if (ops[lo].second == 'I') qstart += ops[lo].first;
+            else if (ops[lo].second == 'D') tstart += ops[lo].first;
+            trimmed_len += ops[lo].first;
+            lo++;
+        }
+        // trim trailing non-M
+        size_t hi = ops.size();
+        while (hi > lo && ops[hi-1].second != 'M') {
+            if (ops[hi-1].second == 'I') qend -= ops[hi-1].first;
+            else if (ops[hi-1].second == 'D') tend -= ops[hi-1].first;
+            trimmed_len += ops[hi-1].first;
+            hi--;
+        }
+        std::string result;
+        for (size_t k = lo; k < hi; k++) {
+            result += std::to_string(ops[k].first) + ops[k].second;
+        }
+        return result;
+    };
+
+    std::ofstream os(path);
+
+    for (const auto& it : overlaps) {
+      for (const auto& jt : it) {
+
+        if (!jt.correction_overlap) continue;
+        std::uint32_t qs = jt.rhs_begin_original, qe = jt.rhs_end_original;
+        std::uint32_t ts = jt.lhs_begin_original, te = jt.lhs_end_original;
+        
+        if(jt.classification_label == 1){
+          qs = jt.overlap.rhs_begin;
+          qe = jt.overlap.rhs_end;
+          ts = jt.overlap.lhs_begin;
+          te = jt.overlap.lhs_end;
+        }
+        std::uint32_t trimmed_len = 0;
+        std::string fixed_cigar = fix_cigar(jt.edlib_alignment.cigar, qs, qe, ts, te, trimmed_len);
+
+        os << sequences[jt.overlap.rhs_id]->name << '\t'
+          << sequences[jt.overlap.rhs_id]->inflated_len << '\t'
+          << qs << '\t' << qe << '\t'
+          << (jt.overlap.strand ? '+' : '-') << '\t'
+          << sequences[jt.overlap.lhs_id]->name << '\t'
+          << sequences[jt.overlap.lhs_id]->inflated_len << '\t'
+          << ts << '\t' << te << '\t'
+          << jt.edlib_alignment.matches << '\t'
+          << (jt.edlib_alignment.block_length - trimmed_len) << '\t'
+          << 255 << '\t'
+          << "cg:Z:" << fixed_cigar << '\n';
+      }
+    }
+
+    os.close();
+  }
+
+  void Graph::PrintCorrectionOverlapsWithFeatures(
+      const std::vector<std::vector<extended_overlap>>& overlaps,
+      const std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+      const std::string& path) const {
+
+    std::ofstream os(path);
+
+    for (const auto& it : overlaps) {
+      for (const auto& jt : it) {
+
+        if (!jt.correction_overlap) continue;
+
+        os << sequences[jt.overlap.rhs_id]->name << '\t'
+          << sequences[jt.overlap.rhs_id]->inflated_len << '\t'
+          << jt.overlap.rhs_begin << '\t' << jt.overlap.rhs_end << '\t'
+          << (jt.overlap.strand ? '+' : '-') << '\t'
+          << sequences[jt.overlap.lhs_id]->name << '\t'
+          << sequences[jt.overlap.lhs_id]->inflated_len << '\t'
+          << jt.overlap.lhs_begin << '\t' << jt.overlap.lhs_end << '\t'
+          << jt.found_matches << '\t'
+          << jt.extended_length << '\t'
+          << 255 << '\t';
+          //<< jt.;
+      }
+    }
+
+    os.close();
+  }
+  // void Graph::PrintCorrectionOverlaps(
+  //     const std::vector<std::vector<extended_overlap>>& overlaps,
+  //     const std::vector<std::unique_ptr<biosoup::NucleicAcid>>& sequences,
+  //     const std::string& path) const {
+
+  //   if (path.empty()) return;
+
+  //   std::ofstream os(path);
+
+  //   for (const auto& it : overlaps) {
+  //     for (const auto& jt : it) {
+
+  //       if (!jt.correction_overlap) continue;
+
+  //       os << sequences[jt.overlap.lhs_id]->name         << '\t'  // query name
+  //         << sequences[jt.overlap.lhs_id]->inflated_len << '\t'  // query length
+  //         << jt.overlap.lhs_begin                       << '\t'  // query start
+  //         << jt.overlap.lhs_end                         << '\t'  // query end
+  //         << (jt.overlap.strand ? '+' : '-')            << '\t'  // strand
+  //         << sequences[jt.overlap.rhs_id]->name         << '\t'  // target name
+  //         << sequences[jt.overlap.rhs_id]->inflated_len << '\t'  // target length
+  //         << jt.overlap.rhs_begin                       << '\t'  // target start
+  //         << jt.overlap.rhs_end                         << '\t'  // target end
+  //         << jt.edlib_alignment.matches                 << '\t'  // matches
+  //         << jt.edlib_alignment.block_length            << '\t'  // block length
+  //         << 255                                        << '\t'  // mapq
+  //         << "cg:Z:" << jt.edlib_alignment.cigar        << '\n';
+  //     }
+  //   }
+
+  //   os.close();
+  // }
+  void Graph::PrintPiles(){
+// for (const auto &it : graph_.piles_) {
+    //   std::ofstream sketch_out(sequences[it->id()]->name + ".csv");
+    //   std::cerr << "Sketching: " << sequences[it->id()]->name << std::endl;
+    //   if(sequences[it->id()]->inflated_len < 500){
+    //     std::cerr << "Skipped sketching: " << sequences[it->id()]->name << std::endl;
+    //     continue;
+    //   }
+
+    //    // auto sketch_results = it->get_kmer_types();
+    //     // auto kmer_ids = it->get_k_kmer_ids();
+    //     // auto multiplicity_data = it->get_sketch_data();
+    //     // for(int i = 0; i < multiplicity_data.size(); i++){
+    //     //   sketch_out << kmer_ids[i] << "\t" << multiplicity_data[i] << std::endl;
+    //     // };
+    //     auto sketch_results = it->get_kmer_types();
+    //     for(auto rez : sketch_results){
+    //       switch (rez)
+    //       {
+    //       case kMerType::None:
+    //         sketch_out << "N" << std::endl;
+    //         break;
+    //       case kMerType::Haploid:
+    //         sketch_out << "H" << std::endl;
+    //         break;
+    //       case kMerType::Diploid:
+    //         sketch_out << "D"  << std::endl;
+    //         break;
+    //       case kMerType::Repetitive:
+    //         sketch_out << "R"  << std::endl;
+    //         break;
+    //       case kMerType::Error:
+    //         sketch_out << "E"  << std::endl;
+    //         break;
+    //       default:
+    //         break;
+    //       }
+    //     }
+    //     // auto avg_quality_data = it->get_avg_base_qualities();
+    //     // auto min_quality_data = it->get_min_base_qualities();
+    //     // int safe_count = std::min({
+    //     //     (int)multiplicity_data.size(),
+    //     //     (int)sketch_results.size() / 10,
+    //     //     (int)kmer_ids.size() / 10
+    //     // });
+    //     // for(int i = 0; i < safe_count; i++) {
+    //     //   switch (sketch_results[i*10])
+    //     //   {
+    //     //   case kMerType::None:
+    //     //     sketch_out << "N" << "\t" << multiplicity_data[i] << "\t" << avg_quality_data[i] << "\t" << min_quality_data[i] << "\t" << kmer_ids[i*10] << std::endl;
+    //     //     break;
+    //     //   case kMerType::Haploid:
+    //     //     sketch_out << "H" << "\t" << multiplicity_data[i] << "\t" << avg_quality_data[i] << "\t" << min_quality_data[i] << "\t" << kmer_ids[i*10] << std::endl;
+    //     //     break;
+    //     //   case kMerType::Diploid:
+    //     //     sketch_out << "D" << "\t" << multiplicity_data[i] << "\t" << avg_quality_data[i] << "\t" << min_quality_data[i] << "\t" << kmer_ids[i*10] << std::endl;
+    //     //     break;
+    //     //   case kMerType::Repetitive:
+    //     //     sketch_out << "R" << "\t" << multiplicity_data[i] << "\t" << avg_quality_data[i] << "\t" << min_quality_data[i] << "\t" << kmer_ids[i*10] << std::endl;
+    //     //     break;
+    //     //   case kMerType::Error:
+    //     //     sketch_out << "E" << "\t" << multiplicity_data[i] << "\t" << avg_quality_data[i] << "\t" << min_quality_data[i] << "\t" << kmer_ids[i*10] << std::endl;
+    //     //     break;
+    //     //   default:
+    //     //     break;
+    //     //   }
+    //     // }
+    //   sketch_out.close();
+    // }
+  };
 
   void Graph::PrintUnitigGfa(const std::string &path, const bool print_seq) const {
     if (path.empty()) {

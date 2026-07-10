@@ -81,6 +81,8 @@
       bool backbone_overlap = false;
       bool candidate_overlap = false;
 
+      bool correction_overlaps = false;
+
       overlapCategory cat = overlapCategory::None;
 
       int classification_label = -1;

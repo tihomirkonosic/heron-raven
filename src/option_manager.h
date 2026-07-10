@@ -71,6 +71,7 @@ struct Program_Parameters {
   std::uint16_t valid_region_coverage_threshold = 4;
   bool paf = false;
   bool print_gfa_seq = false;
+  bool correction_overlaps = false;
 };
 
 int ProcessParameters(int argc, char **argv, Program_Parameters& param);

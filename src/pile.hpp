@@ -39,20 +39,8 @@ namespace raven {
       return data_;
     }
 
-    std::vector<float> get_sketch_data() const {
-      return sketch_data_;
-    }
-
     std::vector<std::uint64_t> get_k_kmer_ids() const {
       return k_mer_ids_;
-    }
-
-    std::vector<std::uint32_t> get_avg_base_qualities() const {
-      return avg_quality_data_;
-    }
-
-    std::vector<std::uint32_t> get_min_base_qualities() const {
-      return min_quality_data_;
     }
 
     std::vector<kMerType> get_kmer_types() const {
@@ -132,8 +120,6 @@ namespace raven {
       return total / (end - start);
     }
 
-
-    void check_HOR(std::uint32_t hom_peak);
 
     std::uint32_t id() const {
       return id_;
@@ -258,9 +244,6 @@ namespace raven {
     // store median of valid region
     void FindMedian();
 
-    // classify k-mers in sketch data
-    void classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size, std::uint32_t kmer_len, double downsample_factor);
-
     // store coverage drops
     void FindChimericRegions();
 
@@ -280,11 +263,7 @@ namespace raven {
     // remove all repetitive regions
     void ClearRepetitiveRegions();
 
-    void set_sketch(std::vector<float> sketch);
-
     void set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids);
-
-    void set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data);
 
     std::vector<std::pair<std::uint32_t, std::uint32_t>> find_region_positions(kMerType type, std::uint32_t span_start, std::uint32_t span_end);
 
@@ -335,10 +314,7 @@ namespace raven {
     bool is_hor_;
     float hor_percent_ = 0.f;
     std::vector<std::uint16_t> data_;
-    std::vector<float> sketch_data_;
     std::vector<std::uint64_t> k_mer_ids_;
-    std::vector<std::uint32_t> avg_quality_data_;
-     std::vector<std::uint32_t> min_quality_data_;
     std::vector<bool> kmers_;
     std::vector<kMerType> kmer_types_;
     std::vector<Region> chimeric_regions_;

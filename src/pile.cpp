@@ -31,7 +31,6 @@ namespace raven {
         is_repetitive_(0),
         is_hor_(0),
         data_(end_, 0),
-        sketch_data_(),
         k_mer_ids_(),
         kmers_(),
         chimeric_regions_(),
@@ -71,14 +70,6 @@ namespace raven {
     }
   }
 
-  void Pile::set_sketch(std::vector<float> sketch) {
-    if (sketch.empty()) {
-      return;
-    }
-    sketch_data_ = sketch;
-
-  }
-
   void Pile::set_k_kmer_ids(std::vector<std::uint64_t> k_mer_ids) {
     if (k_mer_ids.empty()) {
       return;
@@ -86,94 +77,6 @@ namespace raven {
     k_mer_ids_ = k_mer_ids;
 
   }
-
-  void Pile::set_quality_data(std::vector<std::uint32_t> avg_quality_data, std::vector<std::uint32_t> min_quality_data){
-    if (avg_quality_data.empty() || min_quality_data.empty()){
-      return;
-    }
-    avg_quality_data_ = avg_quality_data;
-    min_quality_data_ = min_quality_data;
-  };
-
-  void Pile::check_HOR(std::uint32_t hom_peak) {
-    if(sketch_data_.empty()) {
-      return;
-    }
-    const auto cnt = std::count_if(sketch_data_.begin(), sketch_data_.end(), [hom_peak](std::uint16_t v) {
-      return v >= hom_peak * 1.5;
-    });
-    if(cnt > sketch_data_.size() * 0.7) {
-      set_is_hor();
-    }
-  }
-
-  void Pile::classify_sketch_kmers(std::uint32_t hom_peak, std::uint32_t window_size, std::uint32_t kmer_len, double downsample_factor) {
-    if(sketch_data_.empty() || k_mer_ids_.empty()) {
-      return;
-    }
-
-    auto window_median_without_repetitve = [&](std::vector<float>::const_iterator begin,
-                                         std::vector<float>::const_iterator end) -> float {
-      std::vector<float> window(begin, end);
-      window.erase(
-          std::remove_if(
-              window.begin(),
-              window.end(),
-              [hom_peak, downsample_factor](float v) { return (v / downsample_factor) > (hom_peak * 1.5); }
-          ),
-          window.end()
-      );
-      std::nth_element(window.begin(), window.begin() + window.size() / 2, window.end());
-      if (window.empty()) {
-        return 0;
-      } else {
-        return window[window.size() / 2];
-      }
-    };
-
-    auto classify_point = [&](float value, std::uint16_t median) -> kMerType {
-      if (median == 0){
-        return kMerType::Repetitive;
-      }
-      if (value) {
-        if (median * 0.3 < value && value < median * 0.75) {
-          return kMerType::Haploid;
-        } else if (value <= 0.3 * median || (value / downsample_factor) < 0.1 * hom_peak) {
-          return kMerType::Error;
-        } else if ((value / downsample_factor) > hom_peak * 1.5) {
-          return kMerType::Repetitive;
-        } else {
-          return kMerType::Diploid;
-        }
-      } else {
-        return kMerType::Diploid;
-      }
-    };
-
-    const std::size_t n = sketch_data_.size();
-    const std::size_t W = window_size;
-
-    std::size_t begin = 0;
-    for (; begin + W <= n; begin += W) {
-        auto first = sketch_data_.begin() + begin;
-        auto last  = first + W;
-        std::uint16_t median = window_median_without_repetitve(first, last);
-        for (auto it = first; it != last; ++it)
-            kmer_types_.emplace_back(classify_point(*it, median));
-    };
-
-    // final partial window [begin, n)
-    if (begin < n) {
-        auto first = sketch_data_.begin() + begin;
-        auto last  = sketch_data_.begin() + n;
-        auto first_for_median = last - W;
-        std::uint16_t median = window_median_without_repetitve(first_for_median, last);
-        for (auto it = first; it != last; ++it)
-            kmer_types_.emplace_back(classify_point(*it, median));
-    };
-    kmer_types_.insert(kmer_types_.begin(), kmer_len - 1, kMerType::None);
-  }
-
 
 std::vector<std::pair<std::uint32_t, std::uint32_t>> Pile::find_region_positions(kMerType type, std::uint32_t span_start, std::uint32_t span_end){
     std::vector<std::pair<std::uint32_t, std::uint32_t>> positions;

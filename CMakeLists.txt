@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 
 project(raven VERSION 1.5.0
-              LANGUAGES CXX
+              LANGUAGES CXX C
               DESCRIPTION "Raven is a de novo genome assembler for long uncorrected reads.")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
@@ -73,7 +73,7 @@ if (NOT ram_FOUND)
   FetchContent_Declare(
     ram
     GIT_REPOSITORY https://github.com/FilipTomas/ram_count
-    GIT_TAG master
+    GIT_TAG fused-sketch
     GIT_SUBMODULES "")
   FetchContent_GetProperties(ram)
   if (NOT ram_POPULATED)
@@ -95,6 +95,29 @@ if (NOT edlib_FOUND)
   endif ()
 endif ()
 
+FetchContent_Declare(
+  wfa2
+  GIT_REPOSITORY https://github.com/smarco/WFA2-lib
+  GIT_TAG v2.3.5)
+FetchContent_GetProperties(wfa2)
+if (NOT wfa2_POPULATED)
+  FetchContent_Populate(wfa2)
+  file(GLOB WFA2_WAVEFRONT_SOURCES  ${wfa2_SOURCE_DIR}/wavefront/*.c)
+  file(GLOB WFA2_UTILS_SOURCES      ${wfa2_SOURCE_DIR}/utils/*.c)
+  file(GLOB WFA2_SYSTEM_SOURCES     ${wfa2_SOURCE_DIR}/system/*.c)
+  file(GLOB WFA2_ALIGNMENT_SOURCES  ${wfa2_SOURCE_DIR}/alignment/*.c)
+  file(GLOB WFA2_BINDINGS_SOURCES   ${wfa2_SOURCE_DIR}/bindings/cpp/*.cpp)
+  add_library(wfa2 STATIC
+    ${WFA2_WAVEFRONT_SOURCES}
+    ${WFA2_UTILS_SOURCES}
+    ${WFA2_SYSTEM_SOURCES}
+    ${WFA2_ALIGNMENT_SOURCES}
+    ${WFA2_BINDINGS_SOURCES}
+  )
+  target_include_directories(wfa2 PUBLIC ${wfa2_SOURCE_DIR})
+  set_target_properties(wfa2 PROPERTIES LINKER_LANGUAGE CXX)
+endif ()
+
 # ---------------------------------------------------------
 # LibTorch (TorchScript C++ inference) — fetched via FetchContent
 # ---------------------------------------------------------
@@ -114,7 +137,6 @@ if (RAVEN_FETCH_LIBTORCH)
     message(STATUS "LibTorch extracted root: ${libtorch_SOURCE_DIR}")
   endif ()
 
-  # Recursively locate TorchConfig.cmake inside the extracted tree
   file(GLOB_RECURSE _TORCH_CONFIG_CANDIDATES
     RELATIVE "${libtorch_SOURCE_DIR}"
     "${libtorch_SOURCE_DIR}/**/TorchConfig.cmake"
@@ -128,11 +150,9 @@ if (RAVEN_FETCH_LIBTORCH)
       "Sanity check: the zip should contain share/cmake/Torch/TorchConfig.cmake somewhere.")
   endif ()
 
-  # Use the first match
   list(GET _TORCH_CONFIG_CANDIDATES 0 _TORCH_CONFIG_REL)
   set(_TORCH_CONFIG_ABS "${libtorch_SOURCE_DIR}/${_TORCH_CONFIG_REL}")
 
-  # Torch_DIR must be the directory containing TorchConfig.cmake
   get_filename_component(_TORCH_DIR "${_TORCH_CONFIG_ABS}" DIRECTORY)
 
   set(Torch_DIR "${_TORCH_DIR}" CACHE PATH "Torch CMake package directory" FORCE)
@@ -175,8 +195,6 @@ add_library(raven
   src/graph_constructor/overlap_parser.cpp
   src/graph_constructor/ram_overlap.cpp
   src/graph_constructor/cnn_preprocessing.cpp
-  #src/extended_overlap.cpp
-  #src/read_preprocessing.cpp
 )
 
 target_link_libraries(raven PUBLIC
@@ -185,12 +203,11 @@ target_link_libraries(raven PUBLIC
   bioparser::bioparser
   ram::ram
   edlib::edlib
-  #kmc_api
+  wfa2
   catboost::model
   ${TORCH_LIBRARIES}
 )
 
-# Torch sometimes provides required compile flags (ABI, visibility, etc.)
 target_compile_options(raven PUBLIC ${TORCH_CXX_FLAGS})
 
 target_include_directories(raven PUBLIC

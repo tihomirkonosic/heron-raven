@@ -89,6 +89,8 @@ struct extended_overlap {
   overlapCategory cat;
   bool candidate_overlap;
 
+  bool correction_overlap;
+
   int classification_label;
 };
 
