@@ -20,3 +20,14 @@ cmake*
 
 Makefile
 test_build/CTestTestfile.cmake
+
+# stray local data dumps (large read files must never be committed)
+/aaaaa
+*.fasta
+*.fa
+*.fastq
+*.fq
+*.fasta.gz
+*.fa.gz
+*.fastq.gz
+*.fq.gz
